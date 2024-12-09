@@ -1,5 +1,5 @@
-import shutil
 import pytest
+
 
 def pytest_addoption(parser):
     """Docstring for pytest_addoption."""
@@ -15,6 +15,7 @@ def pytest_addoption(parser):
         default="auto",
         help="Option to specify which devices to use for tests.",
     )
+
 
 @pytest.fixture(scope="session")
 def accelerator(request):

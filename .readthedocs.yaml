@@ -13,4 +13,8 @@ python:
     - method: pip
       path: .
       extra_requirements:
-        - doc
+        - docsbuild
+submodules:
+  include:
+    - "docs/notebooks"
+  recursive: true

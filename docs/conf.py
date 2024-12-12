@@ -141,7 +141,6 @@ nitpick_ignore = [
 ]
 
 
-
 # -- Config for linkcode -------------------------------------------
 
 

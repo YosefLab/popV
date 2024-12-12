@@ -48,17 +48,20 @@ html_context = {
 # They can be extensions coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
 extensions = [
     "myst_nb",
-    "sphinx_copybutton",
     "sphinx.ext.autodoc",
     "sphinx.ext.intersphinx",
-    "sphinx.ext.autosummary",
-    "sphinx.ext.napoleon",
-    "sphinxcontrib.bibtex",
-    "sphinx_autodoc_typehints",
+    "sphinx.ext.linkcode",
     "sphinx.ext.mathjax",
-    "IPython.sphinxext.ipython_console_highlighting",
-    "sphinxext.opengraph",
+    "sphinx.ext.napoleon",
+    "sphinx_autodoc_typehints",  # needs to be after napoleon
+    "sphinx.ext.extlinks",
+    "sphinx.ext.autosummary",
+    "sphinxcontrib.bibtex",
     *[p.stem for p in (HERE / "extensions").glob("*.py")],
+    "sphinx_copybutton",
+    "sphinx_design",
+    "sphinxext.opengraph",
+    "hoverxref.extension",
 ]
 
 autosummary_generate = True

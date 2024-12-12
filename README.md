@@ -7,7 +7,7 @@
 
 # PopV
 
-PopV uses popular vote of a variety of cell-type transfer tools to classify cell-types in a query dataset based on a test dataset. 
+PopV uses popular vote of a variety of cell-type transfer tools to classify cell-types in a query dataset based on a test dataset.
 Using this variety of algorithms, we compute the agreement between those algorithms and use this agreement to predict which cell-types are with a high likelihood the same cell-types observed in the reference.
 
 ## Algorithms

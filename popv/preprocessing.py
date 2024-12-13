@@ -345,19 +345,17 @@ class Process_Query:
             except (
                 ValueError
             ):  # seurat_v3 tends to error with singularities then use Poisson hvg.
-                self.adata.var[
-                    "highly_variable"
-                ] = sc.experimental.pp.highly_variable_genes(
-                    self.adata[self.adata.obs["_dataset"] == "ref"].copy(),
-                    n_top_genes=self.hvg,
-                    subset=False,
-                    layer="scvi_counts",
-                    flavor="pearson_residuals",
-                    inplace=False,
-                    batch_key="_batch_annotation",
-                )[
-                    "highly_variable"
-                ]
+                self.adata.var["highly_variable"] = (
+                    sc.experimental.pp.highly_variable_genes(
+                        self.adata[self.adata.obs["_dataset"] == "ref"].copy(),
+                        n_top_genes=self.hvg,
+                        subset=False,
+                        layer="scvi_counts",
+                        flavor="pearson_residuals",
+                        inplace=False,
+                        batch_key="_batch_annotation",
+                    )["highly_variable"]
+                )
             self.adata = self.adata[:, self.adata.var["highly_variable"]].copy()
 
         sc.pp.normalize_total(self.adata, target_sum=1e4)

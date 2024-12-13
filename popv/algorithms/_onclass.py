@@ -109,9 +109,9 @@ class ONCLASS:
         logging.info(
             f'Computing Onclass. Storing prediction in adata.obs["{self.result_key}"]'
         )
-        adata.obs.loc[
-            adata.obs["_dataset"] == "query", self.cell_ontology_obs_key
-        ] = adata.uns["unknown_celltype_label"]
+        adata.obs.loc[adata.obs["_dataset"] == "query", self.cell_ontology_obs_key] = (
+            adata.uns["unknown_celltype_label"]
+        )
 
         train_idx = adata.obs["_dataset"] == "ref"
 

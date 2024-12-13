@@ -29,7 +29,3 @@ Methods table
 
 Methods
 ~~~~~~~
-
-
-
-

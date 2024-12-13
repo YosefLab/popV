@@ -93,6 +93,7 @@ class SCANORAMA(BaseAlgorithm):
 
         if settings.cuml:
             from cuml.neighbors import KNeighborsClassifier as cuKNeighbors
+
             knn = cuKNeighbors(n_neighbors=self.classifier_dict["n_neighbors"])
         else:
             knn = make_pipeline(
@@ -122,7 +123,7 @@ class SCANORAMA(BaseAlgorithm):
                 f'Saving UMAP of scanorama results to adata.obs["{self.embedding_key}"]'
             )
 
-            method = 'rapids' if settings.cuml else 'umap'
+            method = "rapids" if settings.cuml else "umap"
             sc.pp.neighbors(adata, use_rep="X_scanorama", method=method)
             adata.obsm[self.embedding_key] = sc.tl.umap(
                 adata, copy=True, method=method, **self.embedding_kwargs

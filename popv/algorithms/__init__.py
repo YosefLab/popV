@@ -9,14 +9,14 @@ from ._scvi import SCVI_POPV as knn_on_scvi
 from ._svm import SVM as svm
 
 __all__ = [
-    "knn_on_scvi",
-    "scanvi",
+    "base_algorithm",
+    "celltypist",
     "knn_on_bbknn",
     "knn_on_harmony",
-    "svm",
-    "rf",
-    "onclass",
     "knn_on_scanorama",
-    "celltypist",
-    "base_algorithm",
+    "knn_on_scvi",
+    "onclass",
+    "rf",
+    "scanvi",
+    "svm",
 ]

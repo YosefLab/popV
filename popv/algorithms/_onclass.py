@@ -116,9 +116,9 @@ class ONCLASS(BaseAlgorithm):
         logging.info(
             f'Computing Onclass. Storing prediction in adata.obs["{self.result_key}"]'
         )
-        adata.obs.loc[
-            adata.obs["_dataset"] == "query", self.cell_ontology_obs_key
-        ] = adata.uns["unknown_celltype_label"]
+        adata.obs.loc[adata.obs["_dataset"] == "query", self.cell_ontology_obs_key] = (
+            adata.uns["unknown_celltype_label"]
+        )
 
         train_idx = adata.obs["_ref_subsample"]
 
@@ -175,15 +175,15 @@ class ONCLASS(BaseAlgorithm):
 
         if self.return_probabilities:
             required_columns = [
-                self.seen_result_key, self.result_key, self.result_key + "_probabilities", self.seen_result_key + "_probabilities"]
+                self.seen_result_key,
+                self.result_key,
+                self.result_key + "_probabilities",
+                self.seen_result_key + "_probabilities",
+            ]
         else:
-            required_columns = [
-                self.seen_result_key, self.result_key]
+            required_columns = [self.seen_result_key, self.result_key]
 
-        result_df = pd.DataFrame(
-            index=adata.obs_names,
-            columns=required_columns
-        )
+        result_df = pd.DataFrame(index=adata.obs_names, columns=required_columns)
         shard_size = int(settings.shard_size)
         for i in range(0, adata.n_obs, shard_size):
             tmp_x = test_x[i : i + shard_size]
@@ -207,7 +207,10 @@ class ONCLASS(BaseAlgorithm):
                 result_df.loc[names_x, self.seen_result_key] = pred_label_str
             else:
                 onclass_pred = train_model.Predict(
-                    corr_test_feature, use_normalize=False, refine=True, unseen_ratio=-1.0
+                    corr_test_feature,
+                    use_normalize=False,
+                    refine=True,
+                    unseen_ratio=-1.0,
                 )
                 pred_label = [train_model.i2co[ind] for ind in onclass_pred[2]]
                 pred_label_str = [clid_2_name[ind] for ind in pred_label]
@@ -222,8 +225,8 @@ class ONCLASS(BaseAlgorithm):
                     result_df.loc[names_x, self.result_key + "_probabilities"] = np.max(
                         onclass_pred[1], axis=1
                     ) / onclass_pred[1].sum(1)
-                    result_df.loc[names_x, self.seen_result_key + "_probabilities"] = np.max(
-                        onclass_pred[0], axis=1
+                    result_df.loc[names_x, self.seen_result_key + "_probabilities"] = (
+                        np.max(onclass_pred[0], axis=1)
                     )
         adata.obs[result_df.columns] = result_df
 

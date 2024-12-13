@@ -1,6 +1,5 @@
 """Test various algorithms implemented in PopV."""
 
-import os
 from os.path import exists
 
 import anndata
@@ -11,7 +10,7 @@ from popv.preprocessing import Process_Query
 from popv.reproducibility import _accuracy
 
 
-def _get_test_anndata(cl_obo_folder="resources/ontology/", prediction_mode='retrain'):
+def _get_test_anndata(cl_obo_folder="resources/ontology/", prediction_mode="retrain"):
     save_folder = "popv_test_results/"
     fn = save_folder + "annotated_query.h5ad"
     if exists(save_folder + fn):
@@ -122,9 +121,7 @@ def test_harmony():
 def test_scanvi():
     """Test SCANVI algorithm."""
     adata = _get_test_anndata().adata
-    current_method = popv.algorithms.scanvi(
-        train_kwargs={'max_epochs': 2}
-    )
+    current_method = popv.algorithms.scanvi(train_kwargs={"max_epochs": 2})
 
     current_method._compute_integration(adata)
     current_method._predict(adata)
@@ -137,9 +134,7 @@ def test_scanvi():
 def test_scvi():
     """Test SCVI algorithm."""
     adata = _get_test_anndata().adata
-    current_method = popv.algorithms.knn_on_scvi(
-        train_kwargs={"max_epochs": 3}
-    )
+    current_method = popv.algorithms.knn_on_scvi(train_kwargs={"max_epochs": 3})
 
     current_method._compute_integration(adata)
     current_method._predict(adata)
@@ -184,8 +179,9 @@ def test_annotation():
         methods_kwargs={
             "knn_on_bbknn": {"method_kwargs": {"use_annoy": True}},
             "knn_on_scvi": {"train_kwargs": {"max_epochs": 3}},
-            "scanvi": {"train_kwargs": {"max_epochs": 3}}
-    })
+            "scanvi": {"train_kwargs": {"max_epochs": 3}},
+        },
+    )
     popv.visualization.agreement_score_bar_plot(adata)
     popv.visualization.prediction_score_bar_plot(adata)
     popv.visualization.make_agreement_plots(
@@ -209,18 +205,21 @@ def test_annotation():
     assert "popv_majority_vote_prediction" in adata.obs.columns
     assert not adata.obs["popv_majority_vote_prediction"].isnull().any()
 
-    adata = _get_test_anndata(prediction_mode='inference').adata
+    adata = _get_test_anndata(prediction_mode="inference").adata
     popv.annotation.annotate_data(
         adata,
         save_path=None,
         methods_kwargs={
             "knn_on_bbknn": {"method_kwargs": {"use_annoy": True}},
             "knn_on_scvi": {"train_kwargs": {"max_epochs": 3}},
-            "scanvi": {"train_kwargs": {"max_epochs": 3}}
-    })
+            "scanvi": {"train_kwargs": {"max_epochs": 3}},
+        },
+    )
 
-    adata = _get_test_anndata(prediction_mode='fast').adata
-    popv.annotation.annotate_data(adata, save_path="tests/tmp_testing/popv_test_results/")
+    adata = _get_test_anndata(prediction_mode="fast").adata
+    popv.annotation.annotate_data(
+        adata, save_path="tests/tmp_testing/popv_test_results/"
+    )
 
 
 def test_annotation_no_ontology():
@@ -245,8 +244,8 @@ def test_annotation_no_ontology():
     assert "popv_majority_vote_prediction" in adata.obs.columns
     assert not adata.obs["popv_majority_vote_prediction"].isnull().any()
 
-    adata = _get_test_anndata(cl_obo_folder=False, prediction_mode='inference').adata
+    adata = _get_test_anndata(cl_obo_folder=False, prediction_mode="inference").adata
     popv.annotation.annotate_data(adata, methods=["svm", "rf"], save_path=None)
 
-    adata = _get_test_anndata(cl_obo_folder=False, prediction_mode='fast').adata
+    adata = _get_test_anndata(cl_obo_folder=False, prediction_mode="fast").adata
     popv.annotation.annotate_data(adata, methods=["svm", "rf"], save_path=None)

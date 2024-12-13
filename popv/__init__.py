@@ -5,8 +5,8 @@ import logging
 
 import scanpy as sc
 
-from ._settings import settings
 from . import algorithms, annotation, preprocessing, visualization
+from ._settings import settings
 
 try:
     import importlib.metadata as importlib_metadata
@@ -22,10 +22,4 @@ popv_logger = logging.getLogger("popv")
 popv_logger.propagate = False
 
 
-__all__ = [
-    "settings",
-    "algorithms",
-    "annotation",
-    "preprocessing",
-    "visualization"
-]
+__all__ = ["algorithms", "annotation", "preprocessing", "settings", "visualization"]

@@ -115,14 +115,20 @@ class Process_Query:
                         map_location="cpu",
                     )["var_names"]
                     if list(pretrained_scvi_genes) != list(pretrained_scanvi_genes):
-                        raise ValueError("Pretrained SCANVI and SCVI model contain different genes. This is not supported. Check models and retrain.")
+                        raise ValueError(
+                            "Pretrained SCANVI and SCVI model contain different genes. This is not supported. Check models and retrain."
+                        )
 
                     onclass_model = np.load(
                         self.save_path_trained_models + "/OnClass.npz",
                         allow_pickle=True,
                     )
-                    if set(onclass_model["genes"]).issubset(set(pretrained_scanvi_genes)):
-                        raise ValueError("Pretrained SCANVI and OnClass model contain different genes. This is not supported. Retrain OnClass.")
+                    if set(onclass_model["genes"]).issubset(
+                        set(pretrained_scanvi_genes)
+                    ):
+                        raise ValueError(
+                            "Pretrained SCANVI and OnClass model contain different genes. This is not supported. Retrain OnClass."
+                        )
                 else:
                     if not os.path.exists(self.save_path_trained_models):
                         os.makedirs(self.save_path_trained_models)
@@ -130,15 +136,22 @@ class Process_Query:
 
         if self.genes is not None:
             if set(self.genes).issubset(set(query_adata.var_names)):
-                raise ValueError("Query dataset misses genes that were used for reference model training. Retrain reference model, set mode='retrain'")
+                raise ValueError(
+                    "Query dataset misses genes that were used for reference model training. Retrain reference model, set mode='retrain'"
+                )
             self.query_adata = query_adata[:, self.genes].copy()
             if hvg is not None:
-                raise ValueError("Highly variable gene selection is not available if using trained reference model.")
+                raise ValueError(
+                    "Highly variable gene selection is not available if using trained reference model."
+                )
         else:
-            gene_intersection = np.intersect1d(ref_adata.var_names, query_adata.var_names)
+            gene_intersection = np.intersect1d(
+                ref_adata.var_names, query_adata.var_names
+            )
             if hvg is not None and len(gene_intersection) > hvg:
                 expressed_genes, _ = sc.pp.filter_genes(
-                    query_adata[:, gene_intersection], min_cells=200, inplace=False)
+                    query_adata[:, gene_intersection], min_cells=200, inplace=False
+                )
                 subset_genes = gene_intersection[expressed_genes]
                 highly_variable_genes = sc.pp.highly_variable_genes(
                     query_adata[:, subset_genes].copy(),
@@ -150,7 +163,9 @@ class Process_Query:
                     batch_key=query_batch_key,
                     span=1.0,
                 )["highly_variable"]
-                self.genes = query_adata[:, subset_genes].var_names[highly_variable_genes]
+                self.genes = query_adata[:, subset_genes].var_names[
+                    highly_variable_genes
+                ]
             else:
                 self.genes = gene_intersection
         self.query_adata = query_adata[:, self.genes].copy()
@@ -220,7 +235,9 @@ class Process_Query:
         if not check_nonnegative_integers(adata.X):
             raise ValueError(f"Make sure input {input_type} adata contains raw_counts")
         if not len(set(adata.var_names)) == len(adata.var_names):
-            raise ValueError(f"{input_type} dataset contains multiple genes with same gene name.")
+            raise ValueError(
+                f"{input_type} dataset contains multiple genes with same gene name."
+            )
         if adata.n_obs == 0:
             raise ValueError(f"{input_type} anndata has no cells.")
         if adata.n_vars == 0:
@@ -280,8 +297,9 @@ class Process_Query:
             )
         del self.query_adata, self.ref_adata
         self.adata.obs["_labelled_train_indices"] = np.logical_and(
-            self.adata.obs["_dataset"]=="ref",
-            self.adata.obs["_labels_annotation"]!=self.unknown_celltype_label)
+            self.adata.obs["_dataset"] == "ref",
+            self.adata.obs["_labels_annotation"] != self.unknown_celltype_label,
+        )
 
         if self.prediction_mode != "fast":
             # Necessary for BBKNN.
@@ -331,7 +349,9 @@ class Process_Query:
             )
             self.adata.obsm["X_pca"] = sc.tl.pca(self.adata.layers["scaled_counts"])
 
-        self.adata.obs["_labels_annotation"] = self.adata.obs["_labels_annotation"].astype('category')
+        self.adata.obs["_labels_annotation"] = self.adata.obs[
+            "_labels_annotation"
+        ].astype("category")
         # Store values as default for current popv in adata
         self.adata.uns["unknown_celltype_label"] = self.unknown_celltype_label
         self.adata.uns["_pretrained_scvi_path"] = self.pretrained_scvi_path

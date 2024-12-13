@@ -62,8 +62,10 @@ class RF(BaseAlgorithm):
 
         test_x = adata.layers[self.layer_key] if self.layer_key else adata.X
 
-        if len(adata.obs[self.labels_key].unique())>100 and settings.cuml:
-            logging.warning('cuml.ensemble.RandomForestClassifier leads to OOM for more than a hundred labels. Disabling cuML and using sklearn.')
+        if len(adata.obs[self.labels_key].unique()) > 100 and settings.cuml:
+            logging.warning(
+                "cuml.ensemble.RandomForestClassifier leads to OOM for more than a hundred labels. Disabling cuML and using sklearn."
+            )
             enable_cuml = False
         else:
             enable_cuml = settings.cuml
@@ -78,6 +80,7 @@ class RF(BaseAlgorithm):
             train_y = adata.obs.loc[train_idx, self.labels_key].cat.codes.to_numpy()
             if enable_cuml:
                 from cuml.ensemble import RandomForestClassifier as cuRF
+
                 self.classifier_dict = {
                     "max_features": 200,
                 }
@@ -101,36 +104,37 @@ class RF(BaseAlgorithm):
 
         if enable_cuml and scp.issparse(test_x):
             if self.return_probabilities:
-                required_columns = [
-                    self.result_key, self.result_key + "_probabilities"]
+                required_columns = [self.result_key, self.result_key + "_probabilities"]
             else:
-                required_columns = [
-                    self.result_key]
+                required_columns = [self.result_key]
 
-            result_df = pd.DataFrame(
-                index=adata.obs_names,
-                columns=required_columns
-            )
+            result_df = pd.DataFrame(index=adata.obs_names, columns=required_columns)
             shard_size = int(settings.shard_size)
             for i in range(0, adata.n_obs, shard_size):
                 tmp_x = test_x[i : i + shard_size]
                 names_x = adata.obs_names[i : i + shard_size]
                 tmp_x = tmp_x.todense()
-                result_df.loc[names_x, self.result_key] = adata.obs[self.labels_key].cat.categories[rf.predict(tmp_x, predict_model='CPU').astype(int)]
+                result_df.loc[names_x, self.result_key] = adata.obs[
+                    self.labels_key
+                ].cat.categories[rf.predict(tmp_x, predict_model="CPU").astype(int)]
                 if self.return_probabilities:
                     try:
-                        result_df.loc[names_x, self.result_key + "_probabilities"] = np.max(
-                            rf.predict_proba(tmp_x), axis=1
+                        result_df.loc[names_x, self.result_key + "_probabilities"] = (
+                            np.max(rf.predict_proba(tmp_x), axis=1)
                         )
                     except MemoryError:
                         logging.warning(
                             "Memory error while computing probabilities. Disabling probabilities."
                         )
-                        result_df.loc[names_x, self.result_key + "_probabilities"] = None
+                        result_df.loc[names_x, self.result_key + "_probabilities"] = (
+                            None
+                        )
 
             adata.obs[result_df.columns] = result_df
         else:
-            adata.obs[self.result_key] = adata.obs[self.labels_key].cat.categories[rf.predict(test_x)]
+            adata.obs[self.result_key] = adata.obs[self.labels_key].cat.categories[
+                rf.predict(test_x)
+            ]
             if self.return_probabilities:
                 adata.obs[self.result_key + "_probabilities"] = np.max(
                     rf.predict_proba(test_x), axis=1

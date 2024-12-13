@@ -84,7 +84,9 @@ class AlluvialTool:
     def read_input_from_list(self):
         data_table = np.array(self.input)
         if len(set(data_table[:, 0]).intersection(set(data_table[:, 1]))) > 0:
-            raise ValueError("Column a and b have intersecting elements, this is not supported.")
+            raise ValueError(
+                "Column a and b have intersecting elements, this is not supported."
+            )
         data_dic = defaultdict(Counter)
         for line in data_table:
             data_dic[line[0]][line[1]] += 1
@@ -321,7 +323,7 @@ class AlluvialTool:
             ans = (f"{{:{tal}}}").format(item)
         else:
             width = self.item_coord_dic[item].get_width()
-            if side and width_in or (not side and not width_in):
+            if (side and width_in) or (not side and not width_in):
                 lc, rc, wl, wr, tl, tr = (
                     ">",
                     tal,

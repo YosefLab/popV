@@ -84,7 +84,7 @@ class SCANVI_POPV(BaseAlgorithm):
             "n_samples_per_label": 20,
             "train_size": 1.0,
             "accelerator": settings.accelerator,
-            "plan_kwargs" : {"n_epochs_kl_warmup": 20}
+            "plan_kwargs": {"n_epochs_kl_warmup": 20},
         }
         self.train_kwargs.update(train_kwargs)
         self.max_epochs = train_kwargs.get("max_epochs", None)
@@ -156,13 +156,9 @@ class SCANVI_POPV(BaseAlgorithm):
             if self.max_epochs is None:
                 self.train_kwargs.update({"max_epochs": 1})
 
-            self.model.train(
-                **self.train_kwargs
-            )
+            self.model.train(**self.train_kwargs)
         else:
-            self.model.train(
-                **self.train_kwargs
-            )
+            self.model.train(**self.train_kwargs)
         if adata.uns["_prediction_mode"] == "retrain":
             if adata.uns["_save_path_trained_models"]:
                 self.model.save(
@@ -188,7 +184,7 @@ class SCANVI_POPV(BaseAlgorithm):
                 f'Saving UMAP of scanvi results to adata.obs["{self.embedding_key}"]'
             )
             adata.obsm["X_scanvi"] = self.model.get_latent_representation(adata)
-            method = 'rapids' if settings.cuml else 'umap'
+            method = "rapids" if settings.cuml else "umap"
             sc.pp.neighbors(adata, use_rep="X_scanvi", method=method)
             adata.obsm[self.embedding_key] = sc.tl.umap(
                 adata, copy=True, method=method, **self.embedding_kwargs

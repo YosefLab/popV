@@ -56,10 +56,10 @@ class BBKNN(BaseAlgorithm):
 
         self.method_kwargs = {
             "metric": "euclidean" if self.enable_cuml else "cosine",
-            "approx": not self.enable_cuml, # FAISS if cuml
+            "approx": not self.enable_cuml,  # FAISS if cuml
             "n_pcs": 50,
             "neighbors_within_batch": 3 if self.enable_cuml else 8,
-            "use_annoy": False, #pynndescent
+            "use_annoy": False,  # pynndescent
         }
         if method_kwargs is not None:
             self.method_kwargs.update(method_kwargs)
@@ -68,15 +68,16 @@ class BBKNN(BaseAlgorithm):
         if classifier_dict is not None:
             self.classifier_dict.update(classifier_dict)
 
-        self.embedding_kwargs = {
-            "min_dist": 0.1}
+        self.embedding_kwargs = {"min_dist": 0.1}
         self.embedding_kwargs.update(embedding_kwargs)
 
     def _compute_integration(self, adata):
         logging.info("Integrating data with bbknn")
         if len(adata.obs[self.batch_key].unique()) > 100 and self.enable_cuml:
-            logging.warning('Using PyNNDescent instead of RAPIDS as high number of batches leads to OOM.')
-            self.method_kwargs['approx'] = True
+            logging.warning(
+                "Using PyNNDescent instead of RAPIDS as high number of batches leads to OOM."
+            )
+            self.method_kwargs["approx"] = True
         sc.external.pp.bbknn(adata, batch_key=self.batch_key, **self.method_kwargs)
 
     def _predict(self, adata):
@@ -109,7 +110,9 @@ class BBKNN(BaseAlgorithm):
         knn = KNeighborsClassifier(metric="precomputed", **self.classifier_dict)
         knn.fit(train_distances, y=train_y)
 
-        adata.obs[self.result_key] = adata.obs[self.labels_key].cat.categories[knn.predict(test_distances)]
+        adata.obs[self.result_key] = adata.obs[self.labels_key].cat.categories[
+            knn.predict(test_distances)
+        ]
 
         if self.return_probabilities:
             adata.obs[self.result_key + "_probabilities"] = np.max(
@@ -122,10 +125,12 @@ class BBKNN(BaseAlgorithm):
                 f'Saving UMAP of bbknn results to adata.obs["{self.embedding_key}"]'
             )
             if len(adata.obs[self.batch_key]) < 30 and settings.cuml:
-                method = 'rapids'
+                method = "rapids"
             else:
-                logging.warning('Using UMAP instead of RAPIDS as high number of batches leads to OOM.')
-                method = 'umap'
+                logging.warning(
+                    "Using UMAP instead of RAPIDS as high number of batches leads to OOM."
+                )
+                method = "umap"
                 # RAPIDS not possible here as number of batches drastically increases GPU RAM.
             adata.obsm[self.embedding_key] = sc.tl.umap(
                 adata, copy=True, method=method, **self.embedding_kwargs

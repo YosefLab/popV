@@ -90,7 +90,7 @@ class SCVI_POPV(BaseAlgorithm):
             "batch_size": 512,
             "train_size": 1.0,
             "accelerator": settings.accelerator,
-            "plan_kwargs" : {"n_epochs_kl_warmup": 20}
+            "plan_kwargs": {"n_epochs_kl_warmup": 20},
         }
         self.train_kwargs.update(train_kwargs)
         self.max_epochs = train_kwargs.get("max_epochs", None)
@@ -130,16 +130,12 @@ class SCVI_POPV(BaseAlgorithm):
 
         if adata.uns["_prediction_mode"] == "fast":
             if self.max_epochs is None:
-                self.train_kwargs['max_epochs'] = 1
-            model.train(
-                **self.train_kwargs
-            )
+                self.train_kwargs["max_epochs"] = 1
+            model.train(**self.train_kwargs)
         else:
             if self.max_epochs is None:
                 self.max_epochs = min(round((20000 / adata.n_obs) * 200), 200)
-            model.train(
-                **self.train_kwargs
-            )
+            model.train(**self.train_kwargs)
 
             if (
                 adata.uns["_save_path_trained_models"]
@@ -167,6 +163,7 @@ class SCVI_POPV(BaseAlgorithm):
             train_Y = adata.obs.loc[ref_idx, self.labels_key].cat.codes.to_numpy()
             if settings.cuml:
                 from cuml.neighbors import KNeighborsClassifier as cuKNeighbors
+
                 knn = cuKNeighbors(n_neighbors=self.classifier_dict["n_neighbors"])
             else:
                 knn = make_pipeline(
@@ -210,7 +207,7 @@ class SCVI_POPV(BaseAlgorithm):
             logging.info(
                 f'Saving UMAP of scvi results to adata.obs["{self.embedding_key}"]'
             )
-            method = 'rapids' if settings.cuml else 'umap'
+            method = "rapids" if settings.cuml else "umap"
             sc.pp.neighbors(adata, use_rep="X_scvi", method=method)
             adata.obsm[self.embedding_key] = sc.tl.umap(
                 adata, copy=True, method=method, **self.embedding_dict

@@ -16,10 +16,6 @@ from datetime import datetime
 from importlib.metadata import metadata
 from pathlib import Path
 import importlib.util
-import inspect
-import os
-import re
-import subprocess
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:

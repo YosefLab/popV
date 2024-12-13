@@ -77,7 +77,7 @@ class HARMONY(BaseAlgorithm):
             adata.obsm["X_pca"],
             adata.obs,
             batch_key=self.batch_key,
-            use_gpu=settings.accelerator=="gpu",
+            use_gpu=settings.accelerator == "gpu",
         )
 
     def _predict(self, adata, result_key="popv_knn_on_harmony_prediction"):
@@ -89,6 +89,7 @@ class HARMONY(BaseAlgorithm):
 
         if settings.cuml:
             from cuml.neighbors import KNeighborsClassifier as cuKNeighbors
+
             knn = cuKNeighbors(n_neighbors=self.classifier_dict["n_neighbors"])
         else:
             knn = make_pipeline(
@@ -117,7 +118,7 @@ class HARMONY(BaseAlgorithm):
             logging.info(
                 f'Saving UMAP of harmony results to adata.obs["{self.embedding_key}"]'
             )
-            method = 'rapids' if settings.cuml else 'umap'
+            method = "rapids" if settings.cuml else "umap"
             sc.pp.neighbors(adata, use_rep="X_pca_harmony", method=method)
             adata.obsm[self.embedding_key] = sc.tl.umap(
                 adata, copy=True, method=method, **self.embedding_kwargs

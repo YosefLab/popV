@@ -50,20 +50,21 @@ dev = [
     "pre-commit",
     "twine>=4.0.2"
 ]
-doc = [
-    "docutils>=0.8,!=0.18.*,!=0.19.*",
-    "sphinx>=4",
-    "sphinx-book-theme>=1.0.0",
-    "myst-nb",
-    "sphinxcontrib-bibtex>=1.0.0",
-    "sphinx-autodoc-typehints",
-    "sphinxext-opengraph",
-    # For notebooks
-    "ipykernel",
+docs = [
+    "docutils>=0.8,!=0.18.*,!=0.19.*", # see https://github.com/scverse/cookiecutter-scverse/pull/205
+    "sphinx>=4.1",
     "ipython",
-    "sphinx-copybutton",
-    "pandas",
+    "sphinx-book-theme>=1.0.1",
+    "sphinx_copybutton",
+    "sphinx-design",
+    "sphinxext-opengraph",
+    "sphinx-hoverxref",
+    "sphinxcontrib-bibtex>=1.0.0",
+    "myst-parser",
+    "myst-nb",
+    "sphinx-autodoc-typehints",
 ]
+docsbuild = ["popv[docs]"]
 test = [
     "pytest",
     "coverage",

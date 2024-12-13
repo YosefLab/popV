@@ -50,12 +50,18 @@ class SVM:
         pass
 
     def predict(self, adata):
-        logging.info(f'Computing support vector machine. Storing prediction in adata.obs["{self.result_key}"]')
+        logging.info(
+            f'Computing support vector machine. Storing prediction in adata.obs["{self.result_key}"]'
+        )
         test_x = adata.layers[self.layers_key] if self.layers_key else adata.X
 
         if adata.uns["_prediction_mode"] == "retrain":
             train_idx = adata.obs["_ref_subsample"]
-            train_x = adata[train_idx].layers[self.layers_key] if self.layers_key else adata[train_idx].X
+            train_x = (
+                adata[train_idx].layers[self.layers_key]
+                if self.layers_key
+                else adata[train_idx].X
+            )
             train_y = adata[train_idx].obs[self.labels_key].to_numpy()
             clf = CalibratedClassifierCV(svm.LinearSVC(**self.classifier_dict))
             clf.fit(train_x, train_y)
@@ -68,12 +74,18 @@ class SVM:
                     ),
                 )
         else:
-            clf = pickle.load(open(adata.uns["_save_path_trained_models"] + "svm_classifier.pkl", "rb"))
+            clf = pickle.load(
+                open(
+                    adata.uns["_save_path_trained_models"] + "svm_classifier.pkl", "rb"
+                )
+            )
 
         adata.obs[self.result_key] = clf.predict(test_x)
 
         if adata.uns["_return_probabilities"]:
-            adata.obs[self.result_key + "_probabilities"] = np.max(clf.predict_proba(test_x), axis=1)
+            adata.obs[self.result_key + "_probabilities"] = np.max(
+                clf.predict_proba(test_x), axis=1
+            )
 
         adata.obs[self.result_key]
 

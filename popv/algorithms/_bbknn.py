@@ -86,7 +86,9 @@ class BBKNN:
             ]
         )
         if smallest_neighbor_graph < 15:
-            logging.warning(f"BBKNN found only {smallest_neighbor_graph} neighbors. Reduced neighbors in KNN.")
+            logging.warning(
+                f"BBKNN found only {smallest_neighbor_graph} neighbors. Reduced neighbors in KNN."
+            )
             self.classifier_dict["n_neighbors"] = smallest_neighbor_graph
 
         knn = KNeighborsClassifier(metric="precomputed", **self.classifier_dict)
@@ -95,9 +97,15 @@ class BBKNN:
         adata.obs[self.result_key] = knn.predict(test_distances)
 
         if adata.uns["_return_probabilities"]:
-            adata.obs[self.result_key + "_probabilities"] = np.max(knn.predict_proba(test_distances), axis=1)
+            adata.obs[self.result_key + "_probabilities"] = np.max(
+                knn.predict_proba(test_distances), axis=1
+            )
 
     def compute_embedding(self, adata):
         if adata.uns["_compute_embedding"]:
-            logging.info(f'Saving UMAP of bbknn results to adata.obs["{self.embedding_key}"]')
-            adata.obsm[self.embedding_key] = sc.tl.umap(adata, copy=True, **self.embedding_dict).obsm["X_umap"]
+            logging.info(
+                f'Saving UMAP of bbknn results to adata.obs["{self.embedding_key}"]'
+            )
+            adata.obsm[self.embedding_key] = sc.tl.umap(
+                adata, copy=True, **self.embedding_dict
+            ).obsm["X_umap"]

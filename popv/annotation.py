@@ -45,9 +45,11 @@ def annotate_data(
     methods = (
         methods
         if methods is not None
-        else [i[0] for i in inspect.getmembers(algorithms, inspect.isclass)]
-        if not adata.uns["_prediction_mode"] == "fast"
-        else ["knn_on_scvi", "scanvi", "svm", "rf", "onclass", "celltypist"]
+        else (
+            [i[0] for i in inspect.getmembers(algorithms, inspect.isclass)]
+            if not adata.uns["_prediction_mode"] == "fast"
+            else ["knn_on_scvi", "scanvi", "svm", "rf", "onclass", "celltypist"]
+        )
     )
 
     if adata.uns["_cl_obo_file"] is False and "onclass" in methods:

@@ -147,7 +147,9 @@ class Process_Query:
                 set(query_adata.var_names)
             ), "Query dataset misses genes that were used for reference model training. Retrain reference model, set mode='retrain'"
             self.query_adata = query_adata[:, self.genes].copy()
-            assert hvg is None, "Highly variable gene selection is not available if using trained reference model."
+            assert (
+                hvg is None
+            ), "Highly variable gene selection is not available if using trained reference model."
         else:
             self.query_adata = query_adata.copy()
         if query_layers_key is not None:
@@ -164,15 +166,23 @@ class Process_Query:
         self.compute_embedding = compute_embedding
 
         if cl_obo_folder is None:
-            self.cl_obo_file = os.path.dirname(os.path.dirname(__file__)) + "/ontology/cl.obo"
-            self.cl_ontology_file = os.path.dirname(os.path.dirname(__file__)) + "/ontology/cl.ontology"
-            self.nlp_emb_file = os.path.dirname(os.path.dirname(__file__)) + "/ontology/cl.ontology.nlp.emb"
+            self.cl_obo_file = (
+                os.path.dirname(os.path.dirname(__file__)) + "/ontology/cl.obo"
+            )
+            self.cl_ontology_file = (
+                os.path.dirname(os.path.dirname(__file__)) + "/ontology/cl.ontology"
+            )
+            self.nlp_emb_file = (
+                os.path.dirname(os.path.dirname(__file__))
+                + "/ontology/cl.ontology.nlp.emb"
+            )
             if not os.path.exists(self.nlp_emb_file):
                 subprocess.call(
                     [
                         "tar",
                         "-czf",
-                        os.path.dirname(os.path.dirname(__file__)) + "/ontology/nlp.emb.tar.gz",
+                        os.path.dirname(os.path.dirname(__file__))
+                        + "/ontology/nlp.emb.tar.gz",
                         "cl.ontology.nlp.emb",
                     ]
                 )
@@ -211,7 +221,9 @@ class Process_Query:
         self._preprocess()
 
     def _check_validity_anndata(self, adata, input_type):
-        assert check_nonnegative_integers(adata.X), f"Make sure input {input_type} adata contains raw_counts"
+        assert check_nonnegative_integers(
+            adata.X
+        ), f"Make sure input {input_type} adata contains raw_counts"
         assert len(set(adata.var_names)) == len(
             adata.var_names
         ), f"{input_type} dataset contains multiple genes with same gene name."
@@ -220,17 +232,25 @@ class Process_Query:
 
     def _setup_dataset(self, adata, key, add_meta=""):
         if isinstance(self.batch_key[key], list):
-            adata.obs["_batch_annotation"] = adata.obs[self.batch_key[key]].astype(str).sum(1).astype("category")
+            adata.obs["_batch_annotation"] = (
+                adata.obs[self.batch_key[key]].astype(str).sum(1).astype("category")
+            )
         elif isinstance(self.batch_key[key], str):
             adata.obs["_batch_annotation"] = adata.obs[self.batch_key[key]]
         else:
             adata.obs["_batch_annotation"] = self.unknown_celltype_label
-        adata.obs["_batch_annotation"] = adata.obs["_batch_annotation"].astype(str) + add_meta
-        adata.obs["_batch_annotation"] = adata.obs["_batch_annotation"].astype("category")
+        adata.obs["_batch_annotation"] = (
+            adata.obs["_batch_annotation"].astype(str) + add_meta
+        )
+        adata.obs["_batch_annotation"] = adata.obs["_batch_annotation"].astype(
+            "category"
+        )
 
         adata.obs["_labels_annotation"] = self.unknown_celltype_label
         if self.labels_key[key] is not None:
-            adata.obs["_labels_annotation"] = adata.obs[self.labels_key[key]].astype("category")
+            adata.obs["_labels_annotation"] = adata.obs[self.labels_key[key]].astype(
+                "category"
+            )
 
         # subsample the reference cells used for training certain models
         if key == "reference":
@@ -250,8 +270,12 @@ class Process_Query:
 
     def _preprocess(self):
         if self.genes is None:
-            self.ref_adata = self.ref_adata[:, np.intersect1d(self.ref_adata.var_names, self.query_adata.var_names)]
-            self.query_adata = self.query_adata[:, np.intersect1d(self.ref_adata.var_names, self.query_adata.var_names)]
+            self.ref_adata = self.ref_adata[
+                :, np.intersect1d(self.ref_adata.var_names, self.query_adata.var_names)
+            ]
+            self.query_adata = self.query_adata[
+                :, np.intersect1d(self.ref_adata.var_names, self.query_adata.var_names)
+            ]
 
         if self.prediction_mode == "fast":
             self.adata = self.query_adata
@@ -272,22 +296,28 @@ class Process_Query:
             self.adata = self.adata[
                 self.adata.obs["_batch_annotation"].isin(
                     self.adata.obs["_batch_annotation"]
-                    .value_counts()[self.adata.obs["_batch_annotation"].value_counts() > 8]
+                    .value_counts()[
+                        self.adata.obs["_batch_annotation"].value_counts() > 8
+                    ]
                     .index
                 )
             ].copy()
-            difference_batches = set(self.adata.obs["_batch_annotation"]) - batch_before_filtering
+            difference_batches = (
+                set(self.adata.obs["_batch_annotation"]) - batch_before_filtering
+            )
             if difference_batches:
                 logging.warning(
                     f"The following batches will be excluded from annotation because they have less than 9 cells:{difference_batches}."
                 )
 
             # Sort data based on batch for efficiency downstream during SCANORAMA
-            self.adata = self.adata[self.adata.obs.sort_values(by="_batch_annotation").index].copy()
+            self.adata = self.adata[
+                self.adata.obs.sort_values(by="_batch_annotation").index
+            ].copy()
 
-            self.adata.obs[self.labels_key["reference"]] = self.adata.obs[self.labels_key["reference"]].astype(
-                "category"
-            )
+            self.adata.obs[self.labels_key["reference"]] = self.adata.obs[
+                self.labels_key["reference"]
+            ].astype("category")
 
         # Remove any cell with expression below 10 counts.
         zero_cell_names = self.adata[self.adata.X.sum(1) < 10].obs_names
@@ -312,8 +342,12 @@ class Process_Query:
                     inplace=False,
                     batch_key="_batch_annotation",
                 )["highly_variable"]
-            except ValueError:  # seurat_v3 tends to error with singularities then use Poisson hvg.
-                self.adata.var["highly_variable"] = sc.experimental.pp.highly_variable_genes(
+            except (
+                ValueError
+            ):  # seurat_v3 tends to error with singularities then use Poisson hvg.
+                self.adata.var[
+                    "highly_variable"
+                ] = sc.experimental.pp.highly_variable_genes(
                     self.adata[self.adata.obs["_dataset"] == "ref"].copy(),
                     n_top_genes=self.hvg,
                     subset=False,
@@ -321,14 +355,18 @@ class Process_Query:
                     flavor="pearson_residuals",
                     inplace=False,
                     batch_key="_batch_annotation",
-                )["highly_variable"]
+                )[
+                    "highly_variable"
+                ]
             self.adata = self.adata[:, self.adata.var["highly_variable"]].copy()
 
         sc.pp.normalize_total(self.adata, target_sum=1e4)
         sc.pp.log1p(self.adata)
         self.adata.layers["scaled_counts"] = self.adata.X.copy()
         if self.prediction_mode != "fast":
-            sc.pp.scale(self.adata, max_value=10, zero_center=False, layer="scaled_counts")
+            sc.pp.scale(
+                self.adata, max_value=10, zero_center=False, layer="scaled_counts"
+            )
             self.adata.obsm["X_pca"] = sc.tl.pca(self.adata.layers["scaled_counts"])
 
         # Store values as default for current popv in adata

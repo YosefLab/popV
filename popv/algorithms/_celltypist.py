@@ -63,12 +63,16 @@ class CELLTYPIST:
             **self.classifier_dict,
         )
         out_column = (
-            "majority_voting" if "majority_voting" in predictions.predicted_labels.columns else "predicted_labels"
+            "majority_voting"
+            if "majority_voting" in predictions.predicted_labels.columns
+            else "predicted_labels"
         )
 
         adata.obs[self.result_key] = predictions.predicted_labels[out_column]
         if adata.uns["_return_probabilities"]:
-            adata.obs[self.result_key + "_probabilities"] = predictions.probability_matrix.max(axis=1).values
+            adata.obs[
+                self.result_key + "_probabilities"
+            ] = predictions.probability_matrix.max(axis=1).values
 
     def compute_embedding(self, adata):
         pass

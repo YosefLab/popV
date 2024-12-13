@@ -15,7 +15,7 @@ diff a/pyproject.toml b/pyproject.toml	(rejected hunks)
 -    "session-info"
 +    "session-info",
  ]
- 
+
  [project.optional-dependencies]
  dev = [
      "pre-commit",

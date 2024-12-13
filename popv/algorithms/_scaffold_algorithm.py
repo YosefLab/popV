@@ -69,12 +69,16 @@ class NEW_ALGORITHM:
         # adata.obsm["X_new_method"] = embedded_data
 
     def predict(self, adata):
-        logging.info(f'Computing new classifier method. Storing prediction in adata.obs["{self.result_key}"]')
+        logging.info(
+            f'Computing new classifier method. Storing prediction in adata.obs["{self.result_key}"]'
+        )
         # adata.obs[self.result_key] = classifier_results
 
     def compute_embedding(self, adata):
         if adata.uns["_compute_embedding"]:
-            logging.info(f'Saving UMAP of new integration method to adata.obs["{self.embedding_key}"]')
+            logging.info(
+                f'Saving UMAP of new integration method to adata.obs["{self.embedding_key}"]'
+            )
             # sc.pp.neighbors(adata, use_rep="embedding_space")
             # adata.obsm[self.embedding_key] = sc.tl.umap(
             #     adata, copy=True, **self.embedding_dict

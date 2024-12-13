@@ -61,7 +61,9 @@ class HARMONY:
     def compute_integration(self, adata):
         logging.info("Integrating data with harmony")
 
-        adata.obsm["X_pca_harmony"] = harmonize(adata.obsm["X_pca"], adata.obs, batch_key=self.batch_key)
+        adata.obsm["X_pca_harmony"] = harmonize(
+            adata.obsm["X_pca"], adata.obs, batch_key=self.batch_key
+        )
 
     def predict(self, adata, result_key="popv_knn_on_harmony_prediction"):
         logging.info(f'Saving knn on harmony results to adata.obs["{result_key}"]')
@@ -75,7 +77,9 @@ class HARMONY:
                 n_neighbors=self.classifier_dict["n_neighbors"],
                 parallel_batch_queries=True,
             ),
-            KNeighborsClassifier(metric="precomputed", weights=self.classifier_dict["weights"]),
+            KNeighborsClassifier(
+                metric="precomputed", weights=self.classifier_dict["weights"]
+            ),
         )
 
         knn.fit(train_X, train_Y)
@@ -91,6 +95,10 @@ class HARMONY:
 
     def compute_embedding(self, adata):
         if adata.uns["_compute_embedding"]:
-            logging.info(f'Saving UMAP of harmony results to adata.obs["{self.embedding_key}"]')
+            logging.info(
+                f'Saving UMAP of harmony results to adata.obs["{self.embedding_key}"]'
+            )
             sc.pp.neighbors(adata, use_rep="X_pca_harmony")
-            adata.obsm[self.embedding_key] = sc.tl.umap(adata, copy=True, **self.embedding_dict).obsm["X_umap"]
+            adata.obsm[self.embedding_key] = sc.tl.umap(
+                adata, copy=True, **self.embedding_dict
+            ).obsm["X_umap"]

@@ -86,7 +86,11 @@ class SVM(BaseAlgorithm):
                     ),
                 )
         else:
-            clf = pickle.load(open(adata.uns["_save_path_trained_models"] + "svm_classifier.pkl", "rb"))
+            clf = pickle.load(
+                open(
+                    adata.uns["_save_path_trained_models"] + "svm_classifier.pkl", "rb"
+                )
+            )
 
         if settings.cuml and scp.issparse(test_x):
             if self.return_probabilities:

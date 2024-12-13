@@ -1,4 +1,5 @@
 """Test various algorithms implemented in PopV."""
+
 import os
 from os.path import exists
 
@@ -187,14 +188,22 @@ def test_annotation():
     })
     popv.visualization.agreement_score_bar_plot(adata)
     popv.visualization.prediction_score_bar_plot(adata)
-    popv.visualization.make_agreement_plots(adata, prediction_keys=adata.uns["prediction_keys"], show=False)
+    popv.visualization.make_agreement_plots(
+        adata, prediction_keys=adata.uns["prediction_keys"], show=False
+    )
     popv.visualization.celltype_ratio_bar_plot(adata)
     obo_fn = "resources/ontology/cl.obo"
     _accuracy._ontology_accuracy(
-        adata[adata.obs["_dataset"] == "ref"], obofile=obo_fn, gt_key="cell_ontology_class", pred_key="popv_prediction"
+        adata[adata.obs["_dataset"] == "ref"],
+        obofile=obo_fn,
+        gt_key="cell_ontology_class",
+        pred_key="popv_prediction",
     )
     _accuracy._fine_ontology_sibling_accuracy(
-        adata[adata.obs["_dataset"] == "ref"], obofile=obo_fn, gt_key="cell_ontology_class", pred_key="popv_prediction"
+        adata[adata.obs["_dataset"] == "ref"],
+        obofile=obo_fn,
+        gt_key="cell_ontology_class",
+        pred_key="popv_prediction",
     )
 
     assert "popv_majority_vote_prediction" in adata.obs.columns
@@ -217,11 +226,17 @@ def test_annotation():
 def test_annotation_no_ontology():
     """Test Annotation and Plotting pipeline without ontology."""
     adata = _get_test_anndata(cl_obo_folder=False).adata
-    popv.annotation.annotate_data(adata, methods=["svm", "rf"], save_path="tests/tmp_testing/popv_test_results/")
+    popv.annotation.annotate_data(
+        adata, methods=["svm", "rf"], save_path="tests/tmp_testing/popv_test_results/"
+    )
     popv.visualization.agreement_score_bar_plot(adata)
     popv.visualization.prediction_score_bar_plot(adata)
-    popv.visualization.make_agreement_plots(adata, prediction_keys=adata.uns["prediction_keys"])
-    popv.visualization.celltype_ratio_bar_plot(adata, save_folder="tests/tmp_testing/popv_test_results/")
+    popv.visualization.make_agreement_plots(
+        adata, prediction_keys=adata.uns["prediction_keys"]
+    )
+    popv.visualization.celltype_ratio_bar_plot(
+        adata, save_folder="tests/tmp_testing/popv_test_results/"
+    )
     popv.visualization.celltype_ratio_bar_plot(adata, normalize=False)
     adata.obs["empty_columns"] = "a"
     input_data = adata.obs[["empty_columns", "popv_rf_prediction"]].values.tolist()

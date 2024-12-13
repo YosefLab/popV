@@ -106,9 +106,13 @@ class SCVI_POPV(BaseAlgorithm):
         if "subsampled_labels" not in adata.obs.columns:
             adata.obs["subsampled_labels"] = [
                 label if subsampled else adata.uns["unknown_celltype_label"]
-                for label, subsampled in zip(adata.obs["_labels_annotation"], adata.obs["_ref_subsample"])
+                for label, subsampled in zip(
+                    adata.obs["_labels_annotation"], adata.obs["_ref_subsample"]
+                )
             ]
-        adata.obs["subsampled_labels"] = adata.obs["subsampled_labels"].astype("category")
+        adata.obs["subsampled_labels"] = adata.obs["subsampled_labels"].astype(
+            "category"
+        )
 
         if not adata.uns["_pretrained_scvi_path"]:
             SCVI.setup_anndata(
@@ -142,7 +146,9 @@ class SCVI_POPV(BaseAlgorithm):
                 and adata.uns["_prediction_mode"] == "retrain"
             ):
                 # Update scvi for scanvi.
-                adata.uns["_pretrained_scvi_path"] = adata.uns["_save_path_trained_models"] + "/scvi"
+                adata.uns["_pretrained_scvi_path"] = (
+                    adata.uns["_save_path_trained_models"] + "/scvi"
+                )
                 model.save(
                     adata.uns["_save_path_trained_models"] + "/scvi",
                     save_anndata=False,
@@ -177,7 +183,8 @@ class SCVI_POPV(BaseAlgorithm):
                 pickle.dump(
                     knn,
                     open(
-                        adata.uns["_save_path_trained_models"] + "scvi_knn_classifier.pkl",
+                        adata.uns["_save_path_trained_models"]
+                        + "scvi_knn_classifier.pkl",
                         "wb",
                     ),
                 )

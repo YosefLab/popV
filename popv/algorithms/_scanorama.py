@@ -76,8 +76,11 @@ class SCANORAMA(BaseAlgorithm):
     def _compute_integration(self, adata):
         logging.info("Integrating data with scanorama")
 
-        _adatas = [adata[adata.obs[self.batch_key] == i] for i in np.unique(adata.obs[self.batch_key])]
-        scanorama.integrate_scanpy(_adatas, **self.method_kwargs)
+        _adatas = [
+            adata[adata.obs[self.batch_key] == i]
+            for i in np.unique(adata.obs[self.batch_key])
+        ]
+        scanorama.integrate_scanpy(_adatas, **self.method_dict)
         tmp_adata = anndata.concat(_adatas)
         adata.obsm["X_scanorama"] = tmp_adata[adata.obs_names].obsm["X_scanorama"]
 

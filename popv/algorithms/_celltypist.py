@@ -83,7 +83,9 @@ class CELLTYPIST(BaseAlgorithm):
             **self.classifier_dict,
         )
         out_column = (
-            "majority_voting" if "majority_voting" in predictions.predicted_labels.columns else "predicted_labels"
+            "majority_voting"
+            if "majority_voting" in predictions.predicted_labels.columns
+            else "predicted_labels"
         )
 
         adata.obs[self.result_key] = predictions.predicted_labels[out_column]

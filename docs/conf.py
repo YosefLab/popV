@@ -15,6 +15,15 @@ import sys
 from datetime import datetime
 from importlib.metadata import metadata
 from pathlib import Path
+import importlib.util
+import inspect
+import os
+import re
+import subprocess
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from typing import Any
 
 HERE = Path(__file__).parent
 sys.path.insert(0, str(HERE / "extensions"))
@@ -40,10 +49,10 @@ needs_sphinx = "4.0"
 
 html_context = {
     "display_github": True,  # Integrate GitHub
-    "github_user": "yoseflab",  # Username
-    "github_repo": project_name,  # Repo name
-    "github_version": "main",  # Version
-    "conf_py_path": "/docs/",  # Path in the checkout to the docs root
+    "github_user": "cane11",
+    "github_repo": "https://github.com/YosefLab/PopV.git",
+    "github_version": "main",
+    "conf_py_path": "/docs/",
 }
 
 # -- General configuration ---------------------------------------------------
@@ -62,9 +71,16 @@ extensions = [
     "sphinxcontrib.bibtex",
     "sphinx_autodoc_typehints",
     "sphinx.ext.mathjax",
-    "IPython.sphinxext.ipython_console_highlighting",
-    "sphinxext.opengraph",
+    "sphinx.ext.napoleon",
+    "sphinx_autodoc_typehints",  # needs to be after napoleon
+    "sphinx.ext.extlinks",
+    "sphinx.ext.autosummary",
+    "sphinxcontrib.bibtex",
     *[p.stem for p in (HERE / "extensions").glob("*.py")],
+    "sphinx_copybutton",
+    "sphinx_design",
+    "sphinxext.opengraph",
+    "hoverxref.extension",
 ]
 
 autosummary_generate = True
@@ -196,16 +212,76 @@ nitpick_ignore = [
 ]
 
 
-def setup(app):
-    """App setup hook."""
-    app.add_config_value(
-        "recommonmark_config",
-        {
-            "auto_toc_tree_section": "Contents",
-            "enable_auto_toc_tree": True,
-            "enable_math": True,
-            "enable_inline_math": False,
-            "enable_eval_rst": True,
-        },
-        True,
-    )
+# -- Config for linkcode -------------------------------------------
+
+
+def git(*args):
+    """Run git command and return output as string."""
+    return subprocess.check_output(["git", *args]).strip().decode()
+
+
+# https://github.com/DisnakeDev/disnake/blob/7853da70b13fcd2978c39c0b7efa59b34d298186/docs/conf.py#L192
+# Current git reference. Uses branch/tag name if found, otherwise uses commit hash
+git_ref = None
+try:
+    git_ref = git("name-rev", "--name-only", "--no-undefined", "HEAD")
+    git_ref = re.sub(r"^(remotes/[^/]+|tags)/", "", git_ref)
+except Exception:  # noqa: BLE001
+    pass
+
+# (if no name found or relative ref, use commit hash instead)
+if not git_ref or re.search(r"[\^~]", git_ref):
+    try:
+        git_ref = git("rev-parse", "HEAD")
+    except Exception:  # noqa: BLE001
+        git_ref = "main"
+
+# https://github.com/DisnakeDev/disnake/blob/7853da70b13fcd2978c39c0b7efa59b34d298186/docs/conf.py#L192
+_scvi_tools_module_path = os.path.dirname(importlib.util.find_spec("scvi").origin)  # type: ignore
+
+
+def linkcode_resolve(domain, info):
+    """Determine the URL corresponding to Python object."""
+    if domain != "py":
+        return None
+
+    try:
+        obj: Any = sys.modules[info["module"]]
+        for part in info["fullname"].split("."):
+            obj = getattr(obj, part)
+        obj = inspect.unwrap(obj)
+
+        if isinstance(obj, property):
+            obj = inspect.unwrap(obj.fget)  # type: ignore
+
+        path = os.path.relpath(inspect.getsourcefile(obj), start=_scvi_tools_module_path)  # type: ignore
+        src, lineno = inspect.getsourcelines(obj)
+    except Exception:  # noqa: BLE001
+        return None
+
+    path = f"{path}#L{lineno}-L{lineno + len(src) - 1}"
+    return f"{repository_url}/blob/{git_ref}/src/scvi/{path}"
+
+
+# -- Config for hoverxref -------------------------------------------
+
+hoverx_default_type = "tooltip"
+hoverxref_domains = ["py"]
+hoverxref_role_types = dict.fromkeys(
+    ["ref", "class", "func", "meth", "attr", "exc", "data", "mod"],
+    "tooltip",
+)
+hoverxref_intersphinx = [
+    "python",
+    "numpy",
+    "scanpy",
+    "anndata",
+    "pytorch_lightning",
+    "scipy",
+    "pandas",
+    "ml_collections",
+    "ray",
+]
+# use proxied API endpoint on rtd to avoid CORS issues
+if os.environ.get("READTHEDOCS"):
+    hoverxref_api_host = "/_"

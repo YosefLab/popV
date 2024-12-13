@@ -101,7 +101,9 @@ class BBKNN(BaseAlgorithm):
             ]
         )
         if smallest_neighbor_graph < 15:
-            logging.warning(f"BBKNN found only {smallest_neighbor_graph} neighbors. Reduced neighbors in KNN.")
+            logging.warning(
+                f"BBKNN found only {smallest_neighbor_graph} neighbors. Reduced neighbors in KNN."
+            )
             self.classifier_dict["n_neighbors"] = smallest_neighbor_graph
 
         knn = KNeighborsClassifier(metric="precomputed", **self.classifier_dict)

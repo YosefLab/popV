@@ -103,9 +103,13 @@ class SCANVI_POPV(BaseAlgorithm):
         if "subsampled_labels" not in adata.obs.columns:
             adata.obs["subsampled_labels"] = [
                 label if subsampled else adata.uns["unknown_celltype_label"]
-                for label, subsampled in zip(adata.obs["_labels_annotation"], adata.obs["_ref_subsample"])
+                for label, subsampled in zip(
+                    adata.obs["_labels_annotation"], adata.obs["_ref_subsample"]
+                )
             ]
-        adata.obs["subsampled_labels"] = adata.obs["subsampled_labels"].astype("category")
+        adata.obs["subsampled_labels"] = adata.obs["subsampled_labels"].astype(
+            "category"
+        )
         yprior = torch.tensor(
             [
                 adata.obs["_labels_annotation"].value_counts()[i] / adata.n_obs

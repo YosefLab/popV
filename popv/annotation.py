@@ -46,9 +46,11 @@ def annotate_data(
     methods = (
         methods
         if methods is not None
-        else [i[0] for i in inspect.getmembers(algorithms, inspect.isclass)]
-        if not adata.uns["_prediction_mode"] == "fast"
-        else ["knn_on_scvi", "scanvi", "svm", "rf", "onclass", "celltypist"]
+        else (
+            [i[0] for i in inspect.getmembers(algorithms, inspect.isclass)]
+            if not adata.uns["_prediction_mode"] == "fast"
+            else ["knn_on_scvi", "scanvi", "svm", "rf", "onclass", "celltypist"]
+        )
     )
 
     if adata.uns["_cl_obo_file"] is False and "onclass" in methods:
@@ -117,7 +119,9 @@ def compute_consensus(adata: anndata.AnnData, prediction_keys: list) -> None:
     Saves the consensus percentage between methods in adata.obs['popv_majority_vote_score']
 
     """
-    consensus_prediction = adata.obs[prediction_keys].apply(_utils.majority_vote, axis=1)
+    consensus_prediction = adata.obs[prediction_keys].apply(
+        _utils.majority_vote, axis=1
+    )
     adata.obs["popv_majority_vote_prediction"] = consensus_prediction
 
     agreement = adata.obs[prediction_keys].apply(_utils.majority_count, axis=1)
@@ -150,9 +154,13 @@ def ontology_vote_onclass(
     if adata.uns["_prediction_mode"] == "retrain":
         G = _utils.make_ontology_dag(adata.uns["_cl_obo_file"])
         if adata.uns["_save_path_trained_models"] is not None:
-            pickle.dump(G, open(adata.uns["_save_path_trained_models"] + "obo_dag.pkl", "wb"))
+            pickle.dump(
+                G, open(adata.uns["_save_path_trained_models"] + "obo_dag.pkl", "wb")
+            )
     else:
-        G = pickle.load(open(adata.uns["_save_path_trained_models"] + "obo_dag.pkl", "rb"))
+        G = pickle.load(
+            open(adata.uns["_save_path_trained_models"] + "obo_dag.pkl", "rb")
+        )
 
     cell_type_root_to_node = {}
     aggregate_ontology_pred = [None] * adata.n_obs
@@ -175,7 +183,9 @@ def ontology_vote_onclass(
                     cell_type_root_to_node[cell_type] = root_to_node
                     depth[cell_type] = len(nx.shortest_path(G, cell_type, "cell"))
                     for ancestor_cell_type in root_to_node:
-                        depth[ancestor_cell_type] = len(nx.shortest_path(G, ancestor_cell_type, "cell"))
+                        depth[ancestor_cell_type] = len(
+                            nx.shortest_path(G, ancestor_cell_type, "cell")
+                        )
                 if pred_key == "popv_onclass_prediction":
                     onclass_depth[ind] = depth[cell_type]
                     for ancestor_cell_type in root_to_node:
@@ -198,11 +208,17 @@ def ontology_vote_onclass(
     adata.obs[save_key] = aggregate_ontology_pred
     adata.obs[save_key + "_score"] = scores
     adata.obs[save_key + "_depth"] = depths
-    adata.obs[save_key + "_onclass_relative_depth"] = np.array(onclass_depth) - adata.obs[save_key + "_depth"]
+    adata.obs[save_key + "_onclass_relative_depth"] = (
+        np.array(onclass_depth) - adata.obs[save_key + "_depth"]
+    )
     # Change numeric values to categoricals.
-    adata.obs[[save_key + "_score", save_key + "_depth", save_key + "_onclass_relative_depth"]] = adata.obs[
+    adata.obs[
         [save_key + "_score", save_key + "_depth", save_key + "_onclass_relative_depth"]
-    ].astype("category")
+    ] = adata.obs[
+        [save_key + "_score", save_key + "_depth", save_key + "_onclass_relative_depth"]
+    ].astype(
+        "category"
+    )
     return adata
 
 
@@ -235,9 +251,13 @@ def ontology_parent_onclass(
     if adata.uns["_prediction_mode"] == "retrain":
         G = _utils.make_ontology_dag(adata.uns["_cl_obo_file"])
         if adata.uns["_save_path_trained_models"] is not None:
-            pickle.dump(G, open(adata.uns["_save_path_trained_models"] + "obo_dag.pkl", "wb"))
+            pickle.dump(
+                G, open(adata.uns["_save_path_trained_models"] + "obo_dag.pkl", "wb")
+            )
     else:
-        G = pickle.load(open(adata.uns["_save_path_trained_models"] + "obo_dag.pkl", "rb"))
+        G = pickle.load(
+            open(adata.uns["_save_path_trained_models"] + "obo_dag.pkl", "rb")
+        )
 
     cell_type_root_to_node = {}
     aggregate_ontology_pred = []
@@ -259,10 +279,13 @@ def ontology_parent_onclass(
                         depth[ancestor_cell_type] = len(
                             nx.shortest_path(G, ancestor_cell_type, "cell")
                         )
-                for ancestor_cell_type in [*list(root_to_node), cell_type]:
+                for ancestor_cell_type in list(root_to_node) + [cell_type]:
                     score[ancestor_cell_type] += 1
                 score_popv[cell_type] += 1
-        score = {key: min(len(prediction_keys) - allowed_errors, value) for key, value in score.items()}
+        score = {
+            key: min(len(prediction_keys) - allowed_errors, value)
+            for key, value in score.items()
+        }
 
         # Find ancestor most present and deepest across all classifiers.
         # If tie, then highest in original classifier.

@@ -50,20 +50,21 @@ dev = [
     "pre-commit",
     "twine>=4.0.2"
 ]
-doc = [
-    "docutils>=0.8,!=0.18.*,!=0.19.*",
-    "sphinx>=4",
-    "sphinx-book-theme>=1.0.0",
-    "myst-nb",
-    "sphinxcontrib-bibtex>=1.0.0",
-    "sphinx-autodoc-typehints",
-    "sphinxext-opengraph",
-    # For notebooks
-    "ipykernel",
+docs = [
+    "docutils>=0.8,!=0.18.*,!=0.19.*", # see https://github.com/scverse/cookiecutter-scverse/pull/205
+    "sphinx>=4.1",
     "ipython",
-    "sphinx-copybutton",
-    "pandas",
+    "sphinx-book-theme>=1.0.1",
+    "sphinx_copybutton",
+    "sphinx-design",
+    "sphinxext-opengraph",
+    "sphinx-hoverxref",
+    "sphinxcontrib-bibtex>=1.0.0",
+    "myst-parser",
+    "myst-nb",
+    "sphinx-autodoc-typehints",
 ]
+docsbuild = ["popv[docs]"]
 test = [
     "pytest",
     "coverage",
@@ -82,14 +83,16 @@ addopts = [
     "--import-mode=importlib",  # allow using test files with same name
 ]
 
-[tool.black]
-line-length = 120
-
 [tool.ruff]
-src = ["."]
-line-length = 119
-target-version = "py39"
-lint.select = [
+line-length = 120
+src = ["src"]
+extend-include = ["*.ipynb"]
+
+[tool.ruff.format]
+docstring-code-format = true
+
+[tool.ruff.lint]
+select = [
     "F",  # Errors detected by Pyflakes
     "E",  # Error detected by Pycodestyle
     "W",  # Warning detected by Pycodestyle
@@ -108,8 +111,8 @@ lint.select = [
     "RUF",  # Report unused noqa directives
     "PT", # pytest style
 ]
-lint.ignore = [
-    # line too long -> we accept long comment lines; black gets rid of long code lines
+ignore = [
+    # line too long -> we accept long comment lines; formatter gets rid of long code lines
     "E501",
     # Do not assign a lambda expression, use a def -> lambda expression assignments are convenient
     "E731",
@@ -123,7 +126,7 @@ lint.ignore = [
     "D107",
     # Errors from function calls in argument defaults. These are fine when the result is immutable.
     "B008",
-    # __magic__ methods are are often self-explanatory, allow missing docstrings
+    # __magic__ methods are often self-explanatory, allow missing docstrings
     "D105",
     # first line should end with a period [Bug: doesn't work with single-line docstrings]
     "D400",
@@ -140,7 +143,7 @@ lint.ignore = [
 convention = "numpy"
 
 [tool.ruff.lint.per-file-ignores]
-"docs/*" = ["I", "BLE001"]
+"docs/*" = ["I"]
 "tests/*" = ["D"]
 "*/__init__.py" = ["F401"]
 
@@ -153,5 +156,5 @@ skip = [
     "docs/changelog.md",
     "docs/references.bib",
     "docs/references.md",
-    "docs/notebooks/example.ipynb"
+    "docs/notebooks/example.ipynb",
 ]

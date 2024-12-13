@@ -164,15 +164,23 @@ class Process_Query:
             self.n_samples_per_label = n_samples_per_label
 
         if cl_obo_folder is None:
-            self.cl_obo_file = os.path.dirname(os.path.dirname(__file__)) + "/ontology/cl.obo"
-            self.cl_ontology_file = os.path.dirname(os.path.dirname(__file__)) + "/ontology/cl.ontology"
-            self.nlp_emb_file = os.path.dirname(os.path.dirname(__file__)) + "/ontology/cl.ontology.nlp.emb"
+            self.cl_obo_file = (
+                os.path.dirname(os.path.dirname(__file__)) + "/ontology/cl.obo"
+            )
+            self.cl_ontology_file = (
+                os.path.dirname(os.path.dirname(__file__)) + "/ontology/cl.ontology"
+            )
+            self.nlp_emb_file = (
+                os.path.dirname(os.path.dirname(__file__))
+                + "/ontology/cl.ontology.nlp.emb"
+            )
             if not os.path.exists(self.nlp_emb_file):
                 subprocess.call(
                     [
                         "tar",
                         "-czf",
-                        os.path.dirname(os.path.dirname(__file__)) + "/ontology/nlp.emb.tar.gz",
+                        os.path.dirname(os.path.dirname(__file__))
+                        + "/ontology/nlp.emb.tar.gz",
                         "cl.ontology.nlp.emb",
                     ]
                 )
@@ -220,17 +228,25 @@ class Process_Query:
 
     def _setup_dataset(self, adata, key, add_meta=""):
         if isinstance(self.batch_key[key], list):
-            adata.obs["_batch_annotation"] = adata.obs[self.batch_key[key]].astype(str).sum(1).astype("category")
+            adata.obs["_batch_annotation"] = (
+                adata.obs[self.batch_key[key]].astype(str).sum(1).astype("category")
+            )
         elif isinstance(self.batch_key[key], str):
             adata.obs["_batch_annotation"] = adata.obs[self.batch_key[key]]
         else:
             adata.obs["_batch_annotation"] = self.unknown_celltype_label
-        adata.obs["_batch_annotation"] = adata.obs["_batch_annotation"].astype(str) + add_meta
-        adata.obs["_batch_annotation"] = adata.obs["_batch_annotation"].astype("category")
+        adata.obs["_batch_annotation"] = (
+            adata.obs["_batch_annotation"].astype(str) + add_meta
+        )
+        adata.obs["_batch_annotation"] = adata.obs["_batch_annotation"].astype(
+            "category"
+        )
 
         adata.obs["_labels_annotation"] = self.unknown_celltype_label
         if self.labels_key[key] is not None:
-            adata.obs["_labels_annotation"] = adata.obs[self.labels_key[key]].astype("category")
+            adata.obs["_labels_annotation"] = adata.obs[self.labels_key[key]].astype(
+                "category"
+            )
 
         # subsample the reference cells used for training certain models
         if key == "reference":
@@ -273,7 +289,9 @@ class Process_Query:
             self.adata = self.adata[
                 self.adata.obs["_batch_annotation"].isin(
                     self.adata.obs["_batch_annotation"]
-                    .value_counts()[self.adata.obs["_batch_annotation"].value_counts() > 8]
+                    .value_counts()[
+                        self.adata.obs["_batch_annotation"].value_counts() > 8
+                    ]
                     .index
                 )
             ]
@@ -290,9 +308,9 @@ class Process_Query:
                 self.adata.obs.sort_values(by="_batch_annotation").index
             ]
 
-            self.adata.obs[self.labels_key["reference"]] = self.adata.obs[self.labels_key["reference"]].astype(
-                "category"
-            )
+            self.adata.obs[self.labels_key["reference"]] = self.adata.obs[
+                self.labels_key["reference"]
+            ].astype("category")
 
         # Remove any cell with expression below 10 counts.
         zero_cell_names = self.adata[self.adata.X.sum(1) < 10].obs_names
@@ -308,7 +326,9 @@ class Process_Query:
         sc.pp.log1p(self.adata)
         self.adata.layers["scaled_counts"] = self.adata.X.copy()
         if self.prediction_mode != "fast":
-            sc.pp.scale(self.adata, max_value=10, zero_center=False, layer="scaled_counts")
+            sc.pp.scale(
+                self.adata, max_value=10, zero_center=False, layer="scaled_counts"
+            )
             self.adata.obsm["X_pca"] = sc.tl.pca(self.adata.layers["scaled_counts"])
 
         self.adata.obs["_labels_annotation"] = self.adata.obs["_labels_annotation"].astype('category')

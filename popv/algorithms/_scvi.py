@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import os
 import pickle
 
 import numpy as np
@@ -23,8 +24,8 @@ class SCVI_POPV(BaseAlgorithm):
         result_key: str | None = "popv_knn_on_scvi_prediction",
         embedding_key: str | None = "X_scvi_umap_popv",
         model_kwargs: dict | None = None,
-        classifier_dict: dict | None = None,
-        embedding_dict: dict | None = None,
+        classifier_kwargs: dict | None = None,
+        embedding_kwargs: dict | None = None,
         train_kwargs: dict | None = None,
     ) -> None:
         """
@@ -44,9 +45,9 @@ class SCVI_POPV(BaseAlgorithm):
             Key in obsm in which UMAP embedding of integrated data is stored.
         model_kwargs
             Dictionary to supply non-default values for SCVI model. Options at scvi.model.SCVI
-        classifier_dict
+        classifier_kwargs
             Dictionary to supply non-default values for KNN classifier. n_neighbors and weights supported.
-        embedding_dict
+        embedding_kwargs
             Dictionary to supply non-default values for UMAP embedding. Options at sc.tl.umap
         train_kwargs
             Dictionary to supply non-default values for training scvi. Options at scvi.model.SCVI.train
@@ -57,10 +58,10 @@ class SCVI_POPV(BaseAlgorithm):
             result_key=result_key,
             embedding_key=embedding_key,
         )
-        if embedding_dict is None:
-            embedding_dict = {}
-        if classifier_dict is None:
-            classifier_dict = {}
+        if embedding_kwargs is None:
+            embedding_kwargs = {}
+        if classifier_kwargs is None:
+            classifier_kwargs = {}
         if model_kwargs is None:
             model_kwargs = {}
         if train_kwargs is None:
@@ -81,23 +82,22 @@ class SCVI_POPV(BaseAlgorithm):
         if model_kwargs is not None:
             self.model_kwargs.update(model_kwargs)
 
-        self.classifier_dict = {"weights": "uniform", "n_neighbors": 15}
-        if classifier_dict is not None:
-            self.classifier_dict.update(classifier_dict)
+        self.classifier_kwargs = {"weights": "uniform", "n_neighbors": 15}
+        if classifier_kwargs is not None:
+            self.classifier_kwargs.update(classifier_kwargs)
 
         self.train_kwargs = {
             "max_epochs": 20,
             "batch_size": 512,
-            "train_size": 1.0,
             "accelerator": settings.accelerator,
-            "plan_kwargs" : {"n_epochs_kl_warmup": 20}
+            "plan_kwargs": {"n_epochs_kl_warmup": 20},
         }
         self.train_kwargs.update(train_kwargs)
         self.max_epochs = train_kwargs.get("max_epochs", None)
 
-        self.embedding_dict = {"min_dist": 0.3}
-        if embedding_dict is not None:
-            self.embedding_dict.update(embedding_dict)
+        self.embedding_kwargs = {"min_dist": 0.3}
+        if embedding_kwargs is not None:
+            self.embedding_kwargs.update(embedding_kwargs)
 
     def _compute_integration(self, adata):
         logging.info("Integrating data with scvi")
@@ -107,7 +107,7 @@ class SCVI_POPV(BaseAlgorithm):
             adata.obs["subsampled_labels"] = [
                 label if subsampled else adata.uns["unknown_celltype_label"]
                 for label, subsampled in zip(
-                    adata.obs["_labels_annotation"], adata.obs["_ref_subsample"]
+                    adata.obs["_labels_annotation"], adata.obs["_ref_subsample"], strict=True
                 )
             ]
         adata.obs["subsampled_labels"] = adata.obs["subsampled_labels"].astype(
@@ -130,27 +130,22 @@ class SCVI_POPV(BaseAlgorithm):
 
         if adata.uns["_prediction_mode"] == "fast":
             if self.max_epochs is None:
-                self.train_kwargs['max_epochs'] = 1
-            model.train(
-                **self.train_kwargs
-            )
+                self.train_kwargs["max_epochs"] = 1
+            model.train(**self.train_kwargs)
         else:
             if self.max_epochs is None:
                 self.max_epochs = min(round((20000 / adata.n_obs) * 200), 200)
-            model.train(
-                **self.train_kwargs
-            )
+            model.train(**self.train_kwargs)
 
             if (
                 adata.uns["_save_path_trained_models"]
                 and adata.uns["_prediction_mode"] == "retrain"
             ):
+                save_path = os.path.join(adata.uns["_save_path_trained_models"], "scvi")
                 # Update scvi for scanvi.
-                adata.uns["_pretrained_scvi_path"] = (
-                    adata.uns["_save_path_trained_models"] + "/scvi"
-                )
+                adata.uns["_pretrained_scvi_path"] = save_path
                 model.save(
-                    adata.uns["_save_path_trained_models"] + "/scvi",
+                    save_path,
                     save_anndata=False,
                     overwrite=True,
                 )
@@ -167,15 +162,16 @@ class SCVI_POPV(BaseAlgorithm):
             train_Y = adata.obs.loc[ref_idx, self.labels_key].cat.codes.to_numpy()
             if settings.cuml:
                 from cuml.neighbors import KNeighborsClassifier as cuKNeighbors
-                knn = cuKNeighbors(n_neighbors=self.classifier_dict["n_neighbors"])
+
+                knn = cuKNeighbors(n_neighbors=self.classifier_kwargs["n_neighbors"])
             else:
                 knn = make_pipeline(
                     PyNNDescentTransformer(
-                        n_neighbors=self.classifier_dict["n_neighbors"],
+                        n_neighbors=self.classifier_kwargs["n_neighbors"],
                         parallel_batch_queries=True,
                     ),
                     KNeighborsClassifier(
-                        metric="precomputed", weights=self.classifier_dict["weights"]
+                        metric="precomputed", weights=self.classifier_kwargs["weights"]
                     ),
                 )
             knn.fit(train_X, train_Y)
@@ -183,15 +179,14 @@ class SCVI_POPV(BaseAlgorithm):
                 pickle.dump(
                     knn,
                     open(
-                        adata.uns["_save_path_trained_models"]
-                        + "scvi_knn_classifier.pkl",
+                        os.path.join(adata.uns["_save_path_trained_models"], "scvi_knn_classifier.pkl"),
                         "wb",
                     ),
                 )
         else:
             knn = pickle.load(
                 open(
-                    adata.uns["_save_path_trained_models"] + "scvi_knn_classifier.pkl",
+                    os.path.join(adata.uns["_save_path_trained_models"], "scvi_knn_classifier.pkl"),
                     "rb",
                 )
             )
@@ -199,9 +194,9 @@ class SCVI_POPV(BaseAlgorithm):
         knn_pred = knn.predict(adata.obsm["X_scvi"])
 
         # save_results
-        adata.obs[self.result_key] = adata.obs[self.labels_key].cat.categories[knn_pred]
+        adata.obs[self.result_key] = adata.uns["label_categories"][knn_pred]
         if self.return_probabilities:
-            adata.obs[self.result_key + "_probabilities"] = np.max(
+            adata.obs[f"{self.result_key}_probabilities"] = np.max(
                 knn.predict_proba(adata.obsm["X_scvi"]), axis=1
             )
 
@@ -210,8 +205,10 @@ class SCVI_POPV(BaseAlgorithm):
             logging.info(
                 f'Saving UMAP of scvi results to adata.obs["{self.embedding_key}"]'
             )
-            method = 'rapids' if settings.cuml else 'umap'
-            sc.pp.neighbors(adata, use_rep="X_scvi", method=method)
+
+            transformer = "rapids" if settings.cuml else None
+            sc.pp.neighbors(adata, use_rep="X_scvi", transformer=transformer)
+            method = "rapids" if settings.cuml else "umap"
             adata.obsm[self.embedding_key] = sc.tl.umap(
-                adata, copy=True, method=method, **self.embedding_dict
+                adata, copy=True, method=method, **self.embedding_kwargs
             ).obsm["X_umap"]

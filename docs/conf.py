@@ -16,10 +16,6 @@ from datetime import datetime
 from importlib.metadata import metadata
 from pathlib import Path
 import importlib.util
-import inspect
-import os
-import re
-import subprocess
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -162,7 +158,7 @@ if not git_ref or re.search(r"[\^~]", git_ref):
         git_ref = "main"
 
 # https://github.com/DisnakeDev/disnake/blob/7853da70b13fcd2978c39c0b7efa59b34d298186/docs/conf.py#L192
-github_repo = "https://github.com/" + html_context["github_user"] + "/" + project_name
+github_repo = f"https://github.com/{html_context["github_user"]}/{project_name}"
 _project_module_path = os.path.dirname(importlib.util.find_spec(package_name).origin)  # type: ignore
 
 

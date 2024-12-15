@@ -10,10 +10,10 @@ exclude = ["resources/*", "tests/*", "dataset/*"]
 
 [project]
 name = "PopV"
-version = "0.4.2"
+version = "0.5.0"
 description = "Consensus prediction of cell type labels with popV"
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 license = {file = "LICENSE"}
 authors = [
     {name = "Can Ergen"},
@@ -27,7 +27,6 @@ urls.Home-page = "https://github.com/YosefLab/PopV.git"
 
 dependencies = [
     "anndata>0.8.0",
-    "pandas<2.0.0,>=1.4.0",
     "bbknn>1.5.0",
     "celltypist>1.3.0",
     "gdown>4.6.0",
@@ -41,7 +40,6 @@ dependencies = [
     "scvi-tools>1.0.0",
     "tensorflow>2.11.0",
     "transformers>4.25.0",
-    "obonet>=1.0",
     "harmony-pytorch>0.1.6",
 ]
 
@@ -114,24 +112,10 @@ select = [
 ignore = [
     # line too long -> we accept long comment lines; formatter gets rid of long code lines
     "E501",
-    # Do not assign a lambda expression, use a def -> lambda expression assignments are convenient
-    "E731",
     # allow I, O, l as variable names -> I is the identity matrix
     "E741",
-    # Missing docstring in public package
-    "D104",
-    # Missing docstring in public module
-    "D100",
-    # Missing docstring in __init__
-    "D107",
-    # Errors from function calls in argument defaults. These are fine when the result is immutable.
-    "B008",
     # __magic__ methods are often self-explanatory, allow missing docstrings
     "D105",
-    # first line should end with a period [Bug: doesn't work with single-line docstrings]
-    "D400",
-    # First line should be in imperative mood; try rephrasing
-    "D401",
     ## Disable one in each pair of mutually incompatible rules
     # We don’t want a blank line before a class docstring
     "D203",

@@ -42,7 +42,7 @@ def annotate_data(
         Default to empty-dictionary.
     """
     if save_path is not None and not os.path.exists(save_path):
-        os.mkdir(save_path)
+        os.makedirs(save_path, exist_ok=True)
     methods = (
         methods
         if methods is not None
@@ -79,9 +79,7 @@ def annotate_data(
         adata.obs[["popv_prediction", "popv_prediction_score"]] = adata.obs[
             ["popv_majority_vote_prediction", "popv_majority_vote_score"]
         ]
-        adata.obs[["popv_parent"]] = adata.obs[
-            ["popv_majority_vote_prediction"]
-        ]
+        adata.obs[["popv_parent"]] = adata.obs[["popv_majority_vote_prediction"]]
     else:
         ontology_vote_onclass(adata, all_prediction_keys)
         ontology_parent_onclass(adata, all_prediction_keys)
@@ -155,11 +153,11 @@ def ontology_vote_onclass(
         G = _utils.make_ontology_dag(adata.uns["_cl_obo_file"])
         if adata.uns["_save_path_trained_models"] is not None:
             pickle.dump(
-                G, open(adata.uns["_save_path_trained_models"] + "obo_dag.pkl", "wb")
+                G, open(os.path.join(adata.uns["_save_path_trained_models"], "obo_dag.pkl"), "wb")
             )
     else:
         G = pickle.load(
-            open(adata.uns["_save_path_trained_models"] + "obo_dag.pkl", "rb")
+            open(os.path.join(adata.uns["_save_path_trained_models"], "obo_dag.pkl"), "rb")
         )
 
     cell_type_root_to_node = {}
@@ -206,16 +204,16 @@ def ontology_vote_onclass(
         scores[ind] = score[celltype_consensus]
         depths[ind] = depth[celltype_consensus]
     adata.obs[save_key] = aggregate_ontology_pred
-    adata.obs[save_key + "_score"] = scores
-    adata.obs[save_key + "_depth"] = depths
-    adata.obs[save_key + "_onclass_relative_depth"] = (
-        np.array(onclass_depth) - adata.obs[save_key + "_depth"]
+    adata.obs[f"{save_key}_score"] = scores
+    adata.obs[f"{save_key}_depth"] = depths
+    adata.obs[f"{save_key}_onclass_relative_depth"] = (
+        np.array(onclass_depth) - adata.obs[f"{save_key}_depth"]
     )
     # Change numeric values to categoricals.
     adata.obs[
-        [save_key + "_score", save_key + "_depth", save_key + "_onclass_relative_depth"]
+        [f"{save_key}_score", f"{save_key}_depth", f"{save_key}_onclass_relative_depth"]
     ] = adata.obs[
-        [save_key + "_score", save_key + "_depth", save_key + "_onclass_relative_depth"]
+        [f"{save_key}_score", f"{save_key}_depth", f"{save_key}_onclass_relative_depth"]
     ].astype(
         "category"
     )
@@ -252,11 +250,11 @@ def ontology_parent_onclass(
         G = _utils.make_ontology_dag(adata.uns["_cl_obo_file"])
         if adata.uns["_save_path_trained_models"] is not None:
             pickle.dump(
-                G, open(adata.uns["_save_path_trained_models"] + "obo_dag.pkl", "wb")
+                G, open(os.path.join(adata.uns["_save_path_trained_models"], "obo_dag.pkl"), "wb")
             )
     else:
         G = pickle.load(
-            open(adata.uns["_save_path_trained_models"] + "obo_dag.pkl", "rb")
+            open(os.path.join(adata.uns["_save_path_trained_models"], "obo_dag.pkl"), "rb")
         )
 
     cell_type_root_to_node = {}

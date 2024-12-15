@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+import json
 import logging
 import os
 import subprocess
+import warnings
 
 import anndata
 import numpy as np
+import pandas as pd
 import scanpy as sc
 import torch
 from scanpy._utils import check_nonnegative_integers
@@ -74,85 +77,118 @@ class Process_Query:
         cl_obo_folder: list | str | bool | None = None,
         unknown_celltype_label: str | None = "unknown",
         n_samples_per_label: int | None = 300,
-        pretrained_scvi_path: str | None = False,
-        save_path_trained_models: str | None = "tmp/",
+        save_path_trained_models: str = "tmp/",
+        pretrained_scvi_path: str | None = None,
         hvg: int | None = 4000,
     ) -> None:
         self.labels_key = {"reference": ref_labels_key, "query": query_labels_key}
         self.unknown_celltype_label = unknown_celltype_label
         self.batch_key = {"reference": ref_batch_key, "query": query_batch_key}
 
-        if pretrained_scvi_path and prediction_mode != "retrain":
-            self.pretrained_scvi_path = save_path_trained_models + "/scvi/"
-        else:
-            self.pretrained_scvi_path = pretrained_scvi_path
-
-        if save_path_trained_models is not None:
-            if save_path_trained_models[-1] != "/":
-                save_path_trained_models += "/"
-            if not os.path.exists(save_path_trained_models):
-                os.makedirs(save_path_trained_models)
+        if save_path_trained_models[-1] != "/":
+            save_path_trained_models += "/"
+        os.makedirs(save_path_trained_models, exist_ok=True)
         self.save_path_trained_models = save_path_trained_models
+        self.pretrained_scvi_path = pretrained_scvi_path
 
         self.prediction_mode = prediction_mode
-        self.genes = None
-        if self.prediction_mode == "fast":
-            if not self.pretrained_scvi_path:
-                raise ValueError("Fast mode requires a pretrained scvi model.")
+        if pretrained_scvi_path is None:
+            self.genes = None
+        else:
             self.genes = torch.load(
-                self.pretrained_scvi_path + "model.pt",
+                os.path.join(pretrained_scvi_path, "model.pt"), map_location="cpu"
+            )["var_names"]
+            self.pretrained_scvi_path = pretrained_scvi_path
+
+        json_path = os.path.join(save_path_trained_models, "preprocessing.json")
+        if prediction_mode!="retrain" and not os.path.exists(json_path):
+            raise ValueError(
+                f"Configuration {json_path} doesn't exist. Set mode='retrain' to reprocess."
+            )
+        elif prediction_mode!="retrain":
+            with open(json_path) as f:
+                data = json.load(f)
+                if not set(data["gene_names"]).issubset(set(query_adata.var_names)):
+                    raise ValueError(
+                        "Query dataset misses genes that were used for reference model training. Retrain reference model, set mode='retrain'"
+                    )
+                self.genes = data["gene_names"]
+                self.label_categories = data["label_categories"]
+        else:
+            self.label_categories = None
+
+        if self.pretrained_scvi_path or self.prediction_mode != "retrain":
+            if self.pretrained_scvi_path is None:
+                self.pretrained_scvi_path = os.path.join(self.save_path_trained_models, "scvi")
+            pretrained_scvi_genes = torch.load(
+                os.path.join(self.pretrained_scvi_path, "model.pt"),
                 map_location="cpu",
             )["var_names"]
-        else:
-            if self.pretrained_scvi_path:
-                pretrained_scvi_genes = torch.load(
-                    self.pretrained_scvi_path + "model.pt",
-                    map_location="cpu",
-                )["var_names"]
-                if self.prediction_mode == "inference":
-                    pretrained_scanvi_genes = torch.load(
-                        self.save_path_trained_models + "/scanvi/model.pt",
-                        map_location="cpu",
-                    )["var_names"]
-                    if list(pretrained_scvi_genes) != list(pretrained_scanvi_genes):
-                        raise ValueError("Pretrained SCANVI and SCVI model contain different genes. This is not supported. Check models and retrain.")
-
-                    onclass_model = np.load(
-                        self.save_path_trained_models + "/OnClass.npz",
-                        allow_pickle=True,
-                    )
-                    if set(onclass_model["genes"]).issubset(set(pretrained_scanvi_genes)):
-                        raise ValueError("Pretrained SCANVI and OnClass model contain different genes. This is not supported. Retrain OnClass.")
-                else:
-                    if not os.path.exists(self.save_path_trained_models):
-                        os.makedirs(self.save_path_trained_models)
-                self.genes = list(pretrained_scvi_genes)
+            if not np.array_equal(pretrained_scvi_genes, self.genes):
+                warnings.warn(
+                    "Pretrained scVI model and query dataset contain different genes. Retrain models or disable scVI.",
+                    UserWarning,
+                    stacklevel=2,
+                )
+        scanvi_path = os.path.join(self.save_path_trained_models, "scanvi/model.pt")
+        if os.path.exists(scanvi_path) and self.prediction_mode != "retrain":
+            pretrained_scanvi_genes = torch.load(
+                scanvi_path,
+                map_location="cpu",
+            )["var_names"]
+            if not np.array_equal(pretrained_scanvi_genes, self.genes):
+                warnings.warn(
+                    "Pretrained scANVI model and query dataset contain different genes. Retrain models or disable scANVI.",
+                    UserWarning,
+                    stacklevel=2,
+                )
+        onclass_path = os.path.join(self.save_path_trained_models, "OnClass.npz")
+        if os.path.exists(onclass_path) and prediction_mode != "retrain":
+            onclass_model = np.load(
+                onclass_path,
+                allow_pickle=True,
+            )
+            if not np.array_equal(onclass_model["genes"], self.genes):
+                warnings.warn(
+                    "Pretrained scANVI model and query dataset contain different genes. Retrain models or disable scANVI.",
+                    UserWarning,
+                    stacklevel=2,
+                )
+        os.makedirs(self.save_path_trained_models, exist_ok=True)
 
         if self.genes is not None:
-            if set(self.genes).issubset(set(query_adata.var_names)):
-                raise ValueError("Query dataset misses genes that were used for reference model training. Retrain reference model, set mode='retrain'")
-            self.query_adata = query_adata[:, self.genes].copy()
+            if not set(self.genes).issubset(set(query_adata.var_names)):
+                raise ValueError(
+                    "Query dataset misses genes that were used for reference model training. Retrain reference model, set mode='retrain'"
+                )
             if hvg is not None:
-                raise ValueError("Highly variable gene selection is not available if using trained reference model.")
+                raise ValueError(
+                    "Highly variable gene selection is not available if using trained reference model."
+                )
         else:
-            gene_intersection = np.intersect1d(ref_adata.var_names, query_adata.var_names)
+            gene_intersection = np.intersect1d(
+                ref_adata.var_names, query_adata.var_names
+            )
             if hvg is not None and len(gene_intersection) > hvg:
                 expressed_genes, _ = sc.pp.filter_genes(
-                    query_adata[:, gene_intersection], min_cells=200, inplace=False)
+                    ref_adata[:, gene_intersection], min_cells=200, inplace=False
+                )
                 subset_genes = gene_intersection[expressed_genes]
                 highly_variable_genes = sc.pp.highly_variable_genes(
-                    query_adata[:, subset_genes].copy(),
+                    ref_adata[:, subset_genes].copy(),
                     n_top_genes=hvg,
                     subset=False,
                     flavor="seurat_v3",
                     inplace=False,
                     layer=query_layer_key,
-                    batch_key=query_batch_key,
+                    batch_key=ref_batch_key,
                     span=1.0,
                 )["highly_variable"]
-                self.genes = query_adata[:, subset_genes].var_names[highly_variable_genes]
+                self.genes = list(ref_adata[:, subset_genes].var_names[
+                    highly_variable_genes
+                ])
             else:
-                self.genes = gene_intersection
+                self.genes = list(gene_intersection)
         self.query_adata = query_adata[:, self.genes].copy()
         if query_layer_key is not None:
             self.query_adata.X = self.query_adata.layers[query_layer_key].copy()
@@ -165,22 +201,20 @@ class Process_Query:
 
         if cl_obo_folder is None:
             self.cl_obo_file = (
-                os.path.dirname(os.path.dirname(__file__)) + "/ontology/cl.obo"
+                os.path.join(os.path.dirname(os.path.dirname(__file__)), "/ontology/cl.obo")
             )
             self.cl_ontology_file = (
-                os.path.dirname(os.path.dirname(__file__)) + "/ontology/cl.ontology"
+                os.path.join(os.path.dirname(os.path.dirname(__file__)), "/ontology/cl.ontology")
             )
             self.nlp_emb_file = (
-                os.path.dirname(os.path.dirname(__file__))
-                + "/ontology/cl.ontology.nlp.emb"
+                os.path.join(os.path.dirname(os.path.dirname(__file__)), "/ontology/cl.ontology.nlp.emb")
             )
             if not os.path.exists(self.nlp_emb_file):
                 subprocess.call(
                     [
                         "tar",
                         "-czf",
-                        os.path.dirname(os.path.dirname(__file__))
-                        + "/ontology/nlp.emb.tar.gz",
+                        f"{os.path.dirname(os.path.dirname(__file__))}/ontology/nlp.emb.tar.gz",
                         "cl.ontology.nlp.emb",
                     ]
                 )
@@ -188,14 +222,14 @@ class Process_Query:
             self.cl_obo_file = False
             self.cl_ontology_file = False
             self.nlp_emb_file = False
-        elif cl_obo_folder is list:
+        elif isinstance(cl_obo_folder, list):
             self.cl_obo_file = cl_obo_folder[0]
             self.cl_ontology_file = cl_obo_folder[1]
             self.nlp_emb_file = cl_obo_folder[2]
         else:
-            self.cl_obo_file = cl_obo_folder + "cl.obo"
-            self.cl_ontology_file = cl_obo_folder + "cl.ontology"
-            self.nlp_emb_file = cl_obo_folder + "cl.ontology.nlp.emb"
+            self.cl_obo_file = os.path.join(cl_obo_folder, "cl.obo")
+            self.cl_ontology_file = os.path.join(cl_obo_folder, "cl.ontology")
+            self.nlp_emb_file = os.path.join(cl_obo_folder, "cl.ontology.nlp.emb")
         if self.cl_obo_file:
             try:
                 with open(self.cl_obo_file):
@@ -220,7 +254,9 @@ class Process_Query:
         if not check_nonnegative_integers(adata.X):
             raise ValueError(f"Make sure input {input_type} adata contains raw_counts")
         if not len(set(adata.var_names)) == len(adata.var_names):
-            raise ValueError(f"{input_type} dataset contains multiple genes with same gene name.")
+            raise ValueError(
+                f"{input_type} dataset contains multiple genes with same gene name."
+            )
         if adata.n_obs == 0:
             raise ValueError(f"{input_type} anndata has no cells.")
         if adata.n_vars == 0:
@@ -278,10 +314,11 @@ class Process_Query:
                 join="outer",
                 fill_value=self.unknown_celltype_label,
             )
-        del self.query_adata, self.ref_adata
+            del self.query_adata, self.ref_adata
         self.adata.obs["_labelled_train_indices"] = np.logical_and(
-            self.adata.obs["_dataset"]=="ref",
-            self.adata.obs["_labels_annotation"]!=self.unknown_celltype_label)
+            self.adata.obs["_dataset"] == "ref",
+            self.adata.obs["_labels_annotation"] != self.unknown_celltype_label,
+        )
 
         if self.prediction_mode != "fast":
             # Necessary for BBKNN.
@@ -331,9 +368,14 @@ class Process_Query:
             )
             self.adata.obsm["X_pca"] = sc.tl.pca(self.adata.layers["scaled_counts"])
 
-        self.adata.obs["_labels_annotation"] = self.adata.obs["_labels_annotation"].astype('category')
+        self.adata.obs["_labels_annotation"] = self.adata.obs[
+            "_labels_annotation"
+        ].astype("category")
         # Store values as default for current popv in adata
         self.adata.uns["unknown_celltype_label"] = self.unknown_celltype_label
+        if self.prediction_mode == "retrain":
+            self.label_categories = list(self.adata.obs["_labels_annotation"].cat.categories)
+        self.adata.uns["label_categories"] = pd.Index(self.label_categories)
         self.adata.uns["_pretrained_scvi_path"] = self.pretrained_scvi_path
         self.adata.uns["_save_path_trained_models"] = self.save_path_trained_models
         self.adata.uns["_prediction_mode"] = self.prediction_mode
@@ -341,3 +383,13 @@ class Process_Query:
         self.adata.uns["_cl_ontology_file"] = self.cl_ontology_file
         self.adata.uns["_nlp_emb_file"] = self.nlp_emb_file
         self.adata.uns["prediction_keys"] = []
+
+        # Store some settings for reference models to output directory when retraining models.
+        if self.prediction_mode == "retrain":
+            data = {
+                "gene_names": self.genes,
+                "label_categories": self.label_categories,
+            }
+
+            with open(os.path.join(self.save_path_trained_models, "preprocessing.json"), "w") as f:
+                json.dump(data, f, indent=4)

@@ -5,8 +5,10 @@ import logging
 
 import scanpy as sc
 
-from ._settings import settings
+from ._settings import settings # isort: skip
+# Import order to avoid circular imports
 from . import algorithms, annotation, preprocessing, visualization
+from ._utils import create_ontology_resources
 
 try:
     import importlib.metadata as importlib_metadata
@@ -22,10 +24,4 @@ popv_logger = logging.getLogger("popv")
 popv_logger.propagate = False
 
 
-__all__ = [
-    "settings",
-    "algorithms",
-    "annotation",
-    "preprocessing",
-    "visualization"
-]
+__all__ = ["algorithms", "annotation", "create_ontology_resources", "preprocessing", "settings", "visualization"]

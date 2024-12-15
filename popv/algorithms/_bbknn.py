@@ -18,7 +18,7 @@ class BBKNN(BaseAlgorithm):
         result_key: str | None = "popv_knn_on_bbknn_prediction",
         embedding_key: str | None = "X_bbknn_umap_popv",
         method_kwargs: dict | None = None,
-        classifier_dict: dict | None = None,
+        classifier_kwargs: dict | None = None,
         embedding_kwargs: dict | None = None,
     ) -> None:
         """
@@ -36,7 +36,7 @@ class BBKNN(BaseAlgorithm):
             Key in obsm in which UMAP embedding of integrated data is stored.
         method_kwargs
             Additional parameters for BBKNN. Options at sc.external.pp.bbknn
-        classifier_dict
+        classifier_kwargs
             Dictionary to supply non-default values for KNN classifier. Options at sklearn.neighbors.KNeighborsClassifier
         embedding_kwargs
             Dictionary to supply non-default values for UMAP embedding. Options at sc.tl.umap
@@ -49,47 +49,44 @@ class BBKNN(BaseAlgorithm):
         )
         if embedding_kwargs is None:
             embedding_kwargs = {}
-        if classifier_dict is None:
-            classifier_dict = {}
+        if classifier_kwargs is None:
+            classifier_kwargs = {}
         if method_kwargs is None:
             method_kwargs = {}
 
         self.method_kwargs = {
             "metric": "euclidean" if self.enable_cuml else "cosine",
-            "approx": not self.enable_cuml, # FAISS if cuml
+            "approx": not self.enable_cuml,  # FAISS if cuml
             "n_pcs": 50,
             "neighbors_within_batch": 3 if self.enable_cuml else 8,
-            "use_annoy": False, #pynndescent
+            "use_annoy": False,  # pynndescent
         }
         if method_kwargs is not None:
             self.method_kwargs.update(method_kwargs)
 
-        self.classifier_dict = {"weights": "uniform", "n_neighbors": 15}
-        if classifier_dict is not None:
-            self.classifier_dict.update(classifier_dict)
+        self.classifier_kwargs = {"weights": "uniform", "n_neighbors": 15}
+        if classifier_kwargs is not None:
+            self.classifier_kwargs.update(classifier_kwargs)
 
-        self.embedding_kwargs = {
-            "min_dist": 0.1}
+        self.embedding_kwargs = {"min_dist": 0.1}
         self.embedding_kwargs.update(embedding_kwargs)
 
     def _compute_integration(self, adata):
         logging.info("Integrating data with bbknn")
         if len(adata.obs[self.batch_key].unique()) > 100 and self.enable_cuml:
-            logging.warning('Using PyNNDescent instead of RAPIDS as high number of batches leads to OOM.')
-            self.method_kwargs['approx'] = True
+            logging.warning(
+                "Using PyNNDescent instead of RAPIDS as high number of batches leads to OOM."
+            )
+            self.method_kwargs["approx"] = True
         sc.external.pp.bbknn(adata, batch_key=self.batch_key, **self.method_kwargs)
 
     def _predict(self, adata):
         logging.info(f'Saving knn on bbknn results to adata.obs["{self.result_key}"]')
 
         distances = adata.obsp["distances"]
-
         ref_idx = adata.obs["_labelled_train_indices"]
-
         ref_dist_idx = np.where(ref_idx)[0]
-
         train_y = adata.obs.loc[ref_idx, self.labels_key].cat.codes.to_numpy()
-
         train_distances = distances[ref_dist_idx, :][:, ref_dist_idx]
         test_distances = distances[:, :][:, ref_dist_idx]
 
@@ -104,15 +101,16 @@ class BBKNN(BaseAlgorithm):
             logging.warning(
                 f"BBKNN found only {smallest_neighbor_graph} neighbors. Reduced neighbors in KNN."
             )
-            self.classifier_dict["n_neighbors"] = smallest_neighbor_graph
+            self.classifier_kwargs["n_neighbors"] = smallest_neighbor_graph
 
-        knn = KNeighborsClassifier(metric="precomputed", **self.classifier_dict)
+        knn = KNeighborsClassifier(metric="precomputed", **self.classifier_kwargs)
         knn.fit(train_distances, y=train_y)
-
-        adata.obs[self.result_key] = adata.obs[self.labels_key].cat.categories[knn.predict(test_distances)]
+        adata.obs[self.result_key] = adata.uns['label_categories'][
+            knn.predict(test_distances)
+        ]
 
         if self.return_probabilities:
-            adata.obs[self.result_key + "_probabilities"] = np.max(
+            adata.obs[f"{self.result_key}_probabilities"] = np.max(
                 knn.predict_proba(test_distances), axis=1
             )
 
@@ -122,10 +120,12 @@ class BBKNN(BaseAlgorithm):
                 f'Saving UMAP of bbknn results to adata.obs["{self.embedding_key}"]'
             )
             if len(adata.obs[self.batch_key]) < 30 and settings.cuml:
-                method = 'rapids'
+                method = "rapids"
             else:
-                logging.warning('Using UMAP instead of RAPIDS as high number of batches leads to OOM.')
-                method = 'umap'
+                logging.warning(
+                    "Using UMAP instead of RAPIDS as high number of batches leads to OOM."
+                )
+                method = "umap"
                 # RAPIDS not possible here as number of batches drastically increases GPU RAM.
             adata.obsm[self.embedding_key] = sc.tl.umap(
                 adata, copy=True, method=method, **self.embedding_kwargs

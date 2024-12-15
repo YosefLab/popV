@@ -83,8 +83,9 @@ class AlluvialTool:
 
     def read_input_from_list(self):
         data_table = np.array(self.input)
-        if len(set(data_table[:, 0]).intersection(set(data_table[:, 1]))) > 0:
-            raise ValueError("Column a and b have intersecting elements, this is not supported.")
+        assert (
+            len(set(data_table[:, 0]).intersection(set(data_table[:, 1]))) == 0
+        ), "Column a and b have intersecting elements, this is not supported."
         data_dic = defaultdict(Counter)
         for line in data_table:
             data_dic[line[0]][line[1]] += 1
@@ -118,7 +119,11 @@ class AlluvialTool:
         _ = kwargs
         b_members = (
             sorted(
-                set(self.data_dic),
+                {
+                    b_item
+                    for b_item_counter in self.data_dic.values()
+                    for b_item in b_item_counter
+                },
                 key=lambda x: self.item_widths_dic[x],
             )
             if not b_sort
@@ -241,7 +246,9 @@ class AlluvialTool:
         lci = len(color_items)
         if rand_seed is not None:
             np.random.seed(rand_seed)
-        cmap = cmap if cmap is not None else matplotlib.cm.get_cmap("hsv", lci * 10**3)
+        cmap = (
+            cmap if cmap is not None else matplotlib.cm.get_cmap("hsv", lci * 10**3)
+        )
         color_array = (
             colors
             if colors is not None
@@ -318,7 +325,7 @@ class AlluvialTool:
         # f_item = bidi.algorithm.get_display(item)  # for RTL languages
         tal = "<" if f_item == item else ">"
         if not disp_width:
-            ans = (f"{{:{tal}}}").format(item)
+            ans = ("{:%s}" % tal).format(item)
         else:
             width = self.item_coord_dic[item].get_width()
             if side and width_in or (not side and not width_in):

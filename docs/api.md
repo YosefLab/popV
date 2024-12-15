@@ -46,4 +46,3 @@ from popv import algorithms
     "knn_on_scanorama",
     "celltypist",
     "base_algorithm",
-

@@ -47,7 +47,7 @@ class Config:
         logging_dir: str = "./popv_log/",
         n_jobs: int = 1,
         cuml: bool = False,
-        shard_size: int = 100000
+        shard_size: int = 100000,
     ):
         """Set up Config manager for PopV."""
         self.seed = seed
@@ -169,5 +169,6 @@ class Config:
     @return_probabilities.setter
     def return_probabilities(self, return_probabilities: bool):
         self._return_probabilities = return_probabilities
+
 
 settings = Config()

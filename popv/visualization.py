@@ -184,6 +184,7 @@ def celltype_ratio_bar_plot(
     adata,
     popv_prediction: str | None = "popv_prediction",
     save_folder: str | None = None,
+    normalize: bool = True,
 ):
     """
     Create bar-plot of celltype rations in query as well as reference cells after running popv.
@@ -196,6 +197,8 @@ def celltype_ratio_bar_plot(
         Key in adata.obs for predictions.
     save_folder
         Path to a folder for storing the plot. Defaults to None and plot is not stored.
+    normalize
+        Plot relative cell-type abundance. Set to False to plot absolute abundance.
 
     Returns
     -------
@@ -209,12 +212,14 @@ def celltype_ratio_bar_plot(
     for x in cell_types:
         prop.loc[x, "query"] = np.sum(labels[is_query] == x)
         prop.loc[x, "ref"] = np.sum(labels[~is_query] == x)
+    if normalize:
+        prop = prop.div(prop.sum(axis=0), axis=1)
 
     ax = prop.loc[cell_types].plot(
-        kind="bar", figsize=(len(cell_types) * 0.5, 4), logy=True
+        kind="bar", figsize=(len(cell_types) * 0.5, 4), logy=(not normalize)
     )
     ax.set_ylabel("Celltype")
-    ax.set_ylabel("log Celltype Abundance")
+    ax.set_ylabel("Celltype Abundance")
     if save_folder is not None:
         save_path = os.path.join(save_folder, "celltype_prop_barplot.pdf")
         ax.get_figure().savefig(save_path, bbox_inches="tight", dpi=300)

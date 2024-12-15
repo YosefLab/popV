@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import os
 
 import numpy as np
 import scanpy as sc
@@ -82,12 +83,13 @@ class SCANVI_POPV(BaseAlgorithm):
             "max_epochs": 20,
             "batch_size": 512,
             "n_samples_per_label": 20,
-            "train_size": 1.0,
             "accelerator": settings.accelerator,
-            "plan_kwargs" : {"n_epochs_kl_warmup": 20}
+            "plan_kwargs": {"n_epochs_kl_warmup": 20},
+            "max_epochs_unsupervised": 20,
         }
         self.train_kwargs.update(train_kwargs)
-        self.max_epochs = train_kwargs.get("max_epochs", None)
+        self.max_epochs_unsupervised = self.train_kwargs.pop("max_epochs_unsupervised")
+        self.max_epochs = self.train_kwargs.get("max_epochs", None)
 
         self.classifier_kwargs = {"n_layers": 3, "dropout_rate": 0.1}
         if classifier_kwargs is not None:
@@ -104,24 +106,17 @@ class SCANVI_POPV(BaseAlgorithm):
             adata.obs["subsampled_labels"] = [
                 label if subsampled else adata.uns["unknown_celltype_label"]
                 for label, subsampled in zip(
-                    adata.obs["_labels_annotation"], adata.obs["_ref_subsample"]
+                    adata.obs["_labels_annotation"], adata.obs["_ref_subsample"], strict=True
                 )
             ]
         adata.obs["subsampled_labels"] = adata.obs["subsampled_labels"].astype(
             "category"
         )
-        yprior = torch.tensor(
-            [
-                adata.obs["_labels_annotation"].value_counts()[i] / adata.n_obs
-                for i in adata.obs["subsampled_labels"].cat.categories
-                if i is not adata.uns["unknown_celltype_label"]
-            ]
-        )
 
         if adata.uns["_prediction_mode"] == "retrain":
             if adata.uns["_pretrained_scvi_path"]:
                 scvi_model = scvi.model.SCVI.load(
-                    adata.uns["_save_path_trained_models"] + "/scvi", adata=adata
+                    os.path.join(adata.uns["_save_path_trained_models"], "scvi"), adata=adata
                 )
             else:
                 scvi.model.SCVI.setup_anndata(
@@ -132,8 +127,7 @@ class SCANVI_POPV(BaseAlgorithm):
                 )
                 scvi_model = scvi.model.SCVI(adata, **self.model_kwargs)
                 scvi_model.train(
-                    train_size=1.0,
-                    max_epochs=min(round((10000 / adata.n_obs) * 200), 200),
+                    max_epochs=self.max_epochs_unsupervised,
                     accelerator=settings.accelerator,
                     plan_kwargs={"n_epochs_kl_warmup": 20},
                 )
@@ -142,13 +136,12 @@ class SCANVI_POPV(BaseAlgorithm):
                 scvi_model,
                 unlabeled_category=adata.uns["unknown_celltype_label"],
                 classifier_parameters=self.classifier_kwargs,
-                y_prior=yprior,
             )
         else:
             query = adata[adata.obs["_dataset"] == "query"].copy()
             self.model = scvi.model.SCANVI.load_query_data(
                 query,
-                adata.uns["_save_path_trained_models"] + "/scanvi",
+                os.path.join(adata.uns["_save_path_trained_models"], "scanvi"),
                 freeze_classifier=True,
             )
 
@@ -156,17 +149,13 @@ class SCANVI_POPV(BaseAlgorithm):
             if self.max_epochs is None:
                 self.train_kwargs.update({"max_epochs": 1})
 
-            self.model.train(
-                **self.train_kwargs
-            )
+            self.model.train(**self.train_kwargs)
         else:
-            self.model.train(
-                **self.train_kwargs
-            )
+            self.model.train(**self.train_kwargs)
         if adata.uns["_prediction_mode"] == "retrain":
             if adata.uns["_save_path_trained_models"]:
                 self.model.save(
-                    adata.uns["_save_path_trained_models"] + "/scanvi",
+                    os.path.join(adata.uns["_save_path_trained_models"], "scanvi"),
                     save_anndata=False,
                     overwrite=True,
                 )
@@ -178,7 +167,7 @@ class SCANVI_POPV(BaseAlgorithm):
 
         adata.obs[self.result_key] = self.model.predict(adata)
         if self.return_probabilities:
-            adata.obs[self.result_key + "_probabilities"] = np.max(
+            adata.obs[f"{self.result_key}_probabilities"] = np.max(
                 self.model.predict(adata, soft=True), axis=1
             )
 
@@ -188,8 +177,9 @@ class SCANVI_POPV(BaseAlgorithm):
                 f'Saving UMAP of scanvi results to adata.obs["{self.embedding_key}"]'
             )
             adata.obsm["X_scanvi"] = self.model.get_latent_representation(adata)
-            method = 'rapids' if settings.cuml else 'umap'
-            sc.pp.neighbors(adata, use_rep="X_scanvi", method=method)
+            transformer = "rapids" if settings.cuml else None
+            sc.pp.neighbors(adata, use_rep="X_scanvi", transformer=transformer)
+            method = "rapids" if settings.cuml else "umap"
             adata.obsm[self.embedding_key] = sc.tl.umap(
                 adata, copy=True, method=method, **self.embedding_kwargs
             ).obsm["X_umap"]

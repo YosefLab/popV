@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import os
 import pickle
 
 import numpy as np
@@ -71,53 +72,48 @@ class SVM(BaseAlgorithm):
             if settings.cuml:
                 from cuml.svm import LinearSVC
                 from sklearn.multiclass import OneVsRestClassifier
-                self.classifier_dict['probability'] = self.return_probabilities
+
+                self.classifier_dict["probability"] = self.return_probabilities
                 clf = OneVsRestClassifier(LinearSVC(**self.classifier_dict))
                 train_x = train_x.todense()
             else:
                 clf = CalibratedClassifierCV(svm.LinearSVC(**self.classifier_dict))
             clf.fit(train_x, train_y)
-            if adata.uns["_save_path_trained_models"] and not settings.cuml:
+            if adata.uns["_save_path_trained_models"]:
                 pickle.dump(
                     clf,
                     open(
-                        adata.uns["_save_path_trained_models"] + "svm_classifier.pkl",
+                        os.path.join(adata.uns["_save_path_trained_models"], "svm_classifier.pkl"),
                         "wb",
                     ),
                 )
-        else:
-            clf = pickle.load(
-                open(
-                    adata.uns["_save_path_trained_models"] + "svm_classifier.pkl", "rb"
-                )
+        clf = pickle.load(
+            open(
+                os.path.join(adata.uns["_save_path_trained_models"], "svm_classifier.pkl"), "rb"
             )
+        )
 
         if settings.cuml and scp.issparse(test_x):
             if self.return_probabilities:
-                required_columns = [
-                    self.result_key, self.result_key + "_probabilities"]
+                required_columns = [self.result_key, f"{self.result_key}_probabilities"]
             else:
-                required_columns = [
-                    self.result_key]
+                required_columns = [self.result_key]
 
-            result_df = pd.DataFrame(
-                index=adata.obs_names,
-                columns=required_columns
-            )
+            result_df = pd.DataFrame(index=adata.obs_names, columns=required_columns)
             shard_size = int(settings.shard_size)
             for i in range(0, adata.n_obs, shard_size):
-                tmp_x = test_x[i: i + shard_size]
-                names_x = adata.obs_names[i: i + shard_size]
+                tmp_x = test_x[i : i + shard_size]
+                names_x = adata.obs_names[i : i + shard_size]
                 tmp_x = tmp_x.todense()
-                result_df.loc[names_x, self.result_key] = adata.obs[self.labels_key].cat.categories[clf.predict(tmp_x).astype(int)]
+                result_df.loc[names_x, self.result_key] = adata.uns["label_categories"][clf.predict(tmp_x).astype(int)]
                 if self.return_probabilities:
-                    result_df.loc[names_x, self.result_key + "_probabilities"] = np.max(
+                    result_df.loc[names_x, f"{self.result_key}_probabilities"] = np.max(
                         clf.predict_proba(tmp_x), axis=1
                     ).astype(float)
             adata.obs[result_df.columns] = result_df
         else:
-            adata.obs[self.result_key] = adata.obs[self.labels_key].cat.categories[clf.predict(test_x)]
+            adata.obs[self.result_key] = adata.uns["label_categories"][clf.predict(test_x)]
             if self.return_probabilities:
-                adata.obs[self.result_key + "_probabilities"] = np.max(
+                adata.obs[f"{self.result_key}_probabilities"] = np.max(
                     clf.predict_proba(test_x), axis=1
                 )

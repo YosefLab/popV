@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import os
 
 import celltypist
 import scanpy as sc
@@ -57,29 +58,38 @@ class CELLTYPIST(BaseAlgorithm):
     def _predict(self, adata):
         logging.info(f'Saving celltypist results to adata.obs["{self.result_key}"]')
 
-        flavor = 'rapids' if settings.cuml else 'vtraag'
-        method = 'rapids' if settings.cuml else 'umap'
-        sc.pp.neighbors(adata, n_neighbors=15, use_rep='X_pca', method=method)
-        sc.tl.louvain(adata, resolution=25., key_added='over_clustering', flavor=flavor)
+        if adata.uns["_prediction_mode"] == "fast":
+            self.classifier_dict["majority_voting"] = False
+            over_clustering = None
+        else:
+            flavor = "rapids" if settings.cuml else "vtraag"
+            transformer = "rapids" if settings.cuml else None
+            sc.pp.neighbors(adata, n_neighbors=15, use_rep="X_pca", transformer=transformer)
+            sc.tl.louvain(
+                adata, resolution=25.0, key_added="over_clustering", flavor=flavor
+            )
+            over_clustering = adata.obs["over_clustering"]
 
         if adata.uns["_prediction_mode"] == "retrain":
             train_idx = adata.obs["_ref_subsample"]
-            print(len(train_idx))
-            if len(train_idx) > 100000 and not True: # settings.cuml:
-                self.method_kwargs['use_SGD'] = True
-                self.method_kwargs['mini_batch'] = True
+            if len(train_idx) > 100000 and not settings.cuml:
+                self.method_kwargs["use_SGD"] = True
+                self.method_kwargs["mini_batch"] = True
 
             train_adata = adata[train_idx].copy()
-            model = celltypist.train(train_adata, self.labels_key, use_GPU=settings.cuml, **self.method_kwargs,)
+            model = celltypist.train(
+                train_adata,
+                self.labels_key,
+                use_GPU=settings.cuml,
+                **self.method_kwargs,
+            )
 
             if adata.uns["_save_path_trained_models"]:
-                model.write(adata.uns["_save_path_trained_models"] + "celltypist.pkl")
-        if adata.uns["_prediction_mode"] == "fast":
-            self.classifier_dict["majority_voting"] = False
+                model.write(os.path.join(adata.uns["_save_path_trained_models"], "celltypist.pkl"))
         predictions = celltypist.annotate(
             adata,
-            model=adata.uns["_save_path_trained_models"] + "celltypist.pkl",
-            over_clustering=adata.obs['over_clustering'],
+            model=os.path.join(adata.uns["_save_path_trained_models"], "celltypist.pkl"),
+            over_clustering=over_clustering,
             **self.classifier_dict,
         )
         out_column = (
@@ -90,6 +100,6 @@ class CELLTYPIST(BaseAlgorithm):
 
         adata.obs[self.result_key] = predictions.predicted_labels[out_column]
         if self.return_probabilities:
-            adata.obs[
-                self.result_key + "_probabilities"
-            ] = predictions.probability_matrix.max(axis=1).values
+            adata.obs[f"{self.result_key}_probabilities"] = (
+                predictions.probability_matrix.max(axis=1).values
+            )

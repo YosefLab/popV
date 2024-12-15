@@ -80,7 +80,7 @@ class SCANORAMA(BaseAlgorithm):
             adata[adata.obs[self.batch_key] == i]
             for i in np.unique(adata.obs[self.batch_key])
         ]
-        scanorama.integrate_scanpy(_adatas, **self.method_dict)
+        scanorama.integrate_scanpy(_adatas, **self.method_kwargs)
         tmp_adata = anndata.concat(_adatas)
         adata.obsm["X_scanorama"] = tmp_adata[adata.obs_names].obsm["X_scanorama"]
 
@@ -93,6 +93,7 @@ class SCANORAMA(BaseAlgorithm):
 
         if settings.cuml:
             from cuml.neighbors import KNeighborsClassifier as cuKNeighbors
+
             knn = cuKNeighbors(n_neighbors=self.classifier_dict["n_neighbors"])
         else:
             knn = make_pipeline(
@@ -109,10 +110,10 @@ class SCANORAMA(BaseAlgorithm):
         knn_pred = knn.predict(adata.obsm["X_scanorama"])
 
         # save_results
-        adata.obs[self.result_key] = adata.obs[self.labels_key].cat.categories[knn_pred]
+        adata.obs[self.result_key] = adata.uns["label_categories"][knn_pred]
 
         if self.return_probabilities:
-            adata.obs[self.result_key + "_probabilities"] = np.max(
+            adata.obs[f"{self.result_key}_probabilities"] = np.max(
                 knn.predict_proba(adata.obsm["X_scanorama"]), axis=1
             )
 
@@ -122,8 +123,9 @@ class SCANORAMA(BaseAlgorithm):
                 f'Saving UMAP of scanorama results to adata.obs["{self.embedding_key}"]'
             )
 
-            method = 'rapids' if settings.cuml else 'umap'
-            sc.pp.neighbors(adata, use_rep="X_scanorama", method=method)
+            transformer = "rapids" if settings.cuml else None
+            sc.pp.neighbors(adata, use_rep="X_scanorama", transformer=transformer)
+            method = "rapids" if settings.cuml else "umap"
             adata.obsm[self.embedding_key] = sc.tl.umap(
                 adata, copy=True, method=method, **self.embedding_kwargs
             ).obsm["X_umap"]

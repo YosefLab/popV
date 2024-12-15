@@ -223,10 +223,7 @@ def test_annotation():
             "scanvi": {"train_kwargs": {"max_epochs": 3}},
         },
     )
-
-
-def test_annotation_no_ontology():
-    """Test Annotation and Plotting pipeline without ontology."""
+    adata = _get_test_anndata(prediction_mode="fast").adata
     adata = _get_test_anndata(cl_obo_folder=False).adata
     popv.annotation.annotate_data(
         adata, methods=["svm", "rf"], save_path="tests/tmp_testing/popv_test_results/"

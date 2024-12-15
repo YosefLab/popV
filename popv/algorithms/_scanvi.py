@@ -6,7 +6,6 @@ import os
 import numpy as np
 import scanpy as sc
 import scvi
-import torch
 
 from popv import settings
 from popv.algorithms._base_algorithm import BaseAlgorithm

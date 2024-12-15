@@ -328,7 +328,7 @@ class AlluvialTool:
             ans = ("{:%s}" % tal).format(item)
         else:
             width = self.item_coord_dic[item].get_width()
-            if side and width_in or (not side and not width_in):
+            if (side and width_in) or (not side and not width_in):
                 lc, rc, wl, wr, tl, tr = (
                     ">",
                     tal,

@@ -18,7 +18,7 @@ from popv import _utils
 
 class Process_Query:
     """
-    Processes the query and reference dataset in preperation for the annotation pipeline.
+    Processes the query and reference dataset in preparation for the annotation pipeline.
 
     Parameters
     ----------
@@ -28,9 +28,13 @@ class Process_Query:
         AnnData of reference cells
     ref_labels_key
         Key in obs field of reference AnnData with cell-type information
-    ref_batch_keys
+    ref_batch_key
         List of Keys (or None) in obs field of reference AnnData to
         use as batch covariate
+    cl_obo_folder
+        Folder containing the cell-type obo for OnClass, ontologies for OnClass and nlp embedding of cell-types.
+        Passing a list will use element 1 as obo, element 2 as ontologies and element 3 as nlp embedding.
+        Setting it to false will disable ontology use.
     query_labels_key
         Key in obs field of query adata for label information.
         This is only used for training scANVI.
@@ -44,10 +48,6 @@ class Process_Query:
         "retrain": Train all prediction models and saves them to disk if save_path_trained_models is not None.
         "inference": Classify all cells based on pretrained models.
         "fast": Fast inference using only query cells and single epoch in scArches.
-    cl_obo_folder
-        Folder containing the cell-type obo for Onclass, ontologies for Onclass and nlp embedding of cell-types.
-        Passing a list will use element 1 as obo, element 2 as ontologies and element 3 as nlp embedding.
-        Setting it to false will disable ontology use.
     unknown_celltype_label
         If query_labels_key is not None, cells with label unknown_celltype_label
         will be treated as unknown and will be predicted by the model.
@@ -70,11 +70,11 @@ class Process_Query:
         ref_adata: anndata.AnnData,
         ref_labels_key: str,
         ref_batch_key: str,
+        cl_obo_folder: list | str | bool,
         query_labels_key: str | None = None,
         query_batch_key: str | None = None,
         query_layer_key: str | None = None,
         prediction_mode: str | None = "retrain",
-        cl_obo_folder: list | str | bool | None = None,
         unknown_celltype_label: str | None = "unknown",
         n_samples_per_label: int | None = 300,
         save_path_trained_models: str = "tmp/",
@@ -199,26 +199,7 @@ class Process_Query:
         else:
             self.n_samples_per_label = n_samples_per_label
 
-        if cl_obo_folder is None:
-            self.cl_obo_file = (
-                os.path.join(os.path.dirname(os.path.dirname(__file__)), "/ontology/cl.obo")
-            )
-            self.cl_ontology_file = (
-                os.path.join(os.path.dirname(os.path.dirname(__file__)), "/ontology/cl.ontology")
-            )
-            self.nlp_emb_file = (
-                os.path.join(os.path.dirname(os.path.dirname(__file__)), "/ontology/cl.ontology.nlp.emb")
-            )
-            if not os.path.exists(self.nlp_emb_file):
-                subprocess.call(
-                    [
-                        "tar",
-                        "-czf",
-                        f"{os.path.dirname(os.path.dirname(__file__))}/ontology/nlp.emb.tar.gz",
-                        "cl.ontology.nlp.emb",
-                    ]
-                )
-        elif cl_obo_folder is False:
+        if cl_obo_folder is False:
             self.cl_obo_file = False
             self.cl_ontology_file = False
             self.nlp_emb_file = False
@@ -227,7 +208,7 @@ class Process_Query:
             self.cl_ontology_file = cl_obo_folder[1]
             self.nlp_emb_file = cl_obo_folder[2]
         else:
-            self.cl_obo_file = os.path.join(cl_obo_folder, "cl.obo")
+            self.cl_obo_file = os.path.join(cl_obo_folder, "cl_popv.json")
             self.cl_ontology_file = os.path.join(cl_obo_folder, "cl.ontology")
             self.nlp_emb_file = os.path.join(cl_obo_folder, "cl.ontology.nlp.emb")
         if self.cl_obo_file:

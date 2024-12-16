@@ -191,7 +191,7 @@ def test_annotation():
         adata, prediction_keys=adata.uns["prediction_keys"], show=False
     )
     popv.visualization.celltype_ratio_bar_plot(adata)
-    obo_fn = "resources/ontology/cl.obo"
+    obo_fn = "resources/ontology/cl_popv.json"
     _accuracy._ontology_accuracy(
         adata[adata.obs["_dataset"] == "ref"],
         obofile=obo_fn,
@@ -224,6 +224,19 @@ def test_annotation():
         },
     )
     adata = _get_test_anndata(prediction_mode="fast").adata
+    popv.annotation.annotate_data(
+        adata,
+        save_path="tests/tmp_testing/popv_test_results/",
+        methods_kwargs={
+            "knn_on_bbknn": {"method_kwargs": {"use_annoy": True}},
+            "knn_on_scvi": {"train_kwargs": {"max_epochs": 3}},
+            "scanvi": {"train_kwargs": {"max_epochs": 3}},
+        },
+    )
+
+
+def test_annotation_no_ontology():
+    """Test Annotation and Plotting pipeline without ontology."""
     adata = _get_test_anndata(cl_obo_folder=False).adata
     popv.annotation.annotate_data(
         adata, methods=["svm", "rf"], save_path="tests/tmp_testing/popv_test_results/"

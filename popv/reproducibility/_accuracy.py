@@ -12,8 +12,8 @@ def _absolute_accuracy(adata, pred_key, gt_key, save_key=None):
     return acc
 
 
-def _ontology_accuracy(adata, pred_key, gt_key, obojson, save_key=None):
-    G = _utils.make_ontology_dag(obojson, lowercase=False).reverse()
+def _ontology_accuracy(adata, pred_key, gt_key, obo_file, save_key=None):
+    G = _utils.make_ontology_dag(obo_file, lowercase=False).reverse()
     if not save_key:
         save_key = "ontology_accuracy"
     adata.obs[save_key] = "na"
@@ -35,13 +35,13 @@ def _ontology_accuracy(adata, pred_key, gt_key, obojson, save_key=None):
     )
 
 
-def _fine_ontology_sibling_accuracy(adata, obojson, pred_key, gt_key, save_key=None):
-    """Calculates the fine ontology accuracy and also determines the distance to siblings"""
+def _fine_ontology_sibling_accuracy(adata, obo_file, pred_key, gt_key, save_key=None):
+    """Calculate the fine ontology accuracy and also determines the distance to siblings."""
     if save_key is None:
         save_key = f"{pred_key}_ontology_distance"
     adata.obs[save_key] = None
 
-    dag = _utils.make_ontology_dag(obojson, lowercase=False).reverse()
+    dag = _utils.make_ontology_dag(obo_file, lowercase=False).reverse()
     dag_undirected = dag.to_undirected()
 
     ontology_distance_dict = {}

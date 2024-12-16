@@ -82,16 +82,16 @@ def test_onclass():
     assert not adata.obs["popv_onclass_prediction"].isnull().any()
 
 
-def test_rf():
+def test_xgboost():
     """Test Random Forest algorithm."""
     adata = _get_test_anndata().adata
-    current_method = popv.algorithms.rf()
+    current_method = popv.algorithms.xgboost()
     current_method._compute_integration(adata)
     current_method._predict(adata)
     current_method._compute_embedding(adata)
 
-    assert "popv_rf_prediction" in adata.obs.columns
-    assert not adata.obs["popv_rf_prediction"].isnull().any()
+    assert "popv_xgboost_prediction" in adata.obs.columns
+    assert not adata.obs["popv_xgboost_prediction"].isnull().any()
 
 
 def test_scanorama():
@@ -194,13 +194,13 @@ def test_annotation():
     obo_fn = "resources/ontology/cl_popv.json"
     _accuracy._ontology_accuracy(
         adata[adata.obs["_dataset"] == "ref"],
-        obofile=obo_fn,
+        obo_file=obo_fn,
         gt_key="cell_ontology_class",
         pred_key="popv_prediction",
     )
     _accuracy._fine_ontology_sibling_accuracy(
         adata[adata.obs["_dataset"] == "ref"],
-        obofile=obo_fn,
+        obo_file=obo_fn,
         gt_key="cell_ontology_class",
         pred_key="popv_prediction",
     )

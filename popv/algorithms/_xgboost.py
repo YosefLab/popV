@@ -2,18 +2,17 @@ from __future__ import annotations
 
 import logging
 import os
-import pickle
 
 import numpy as np
-from sklearn.ensemble import RandomForestClassifier
+import xgboost as xgb
 
 from popv import settings
 from popv.algorithms._base_algorithm import BaseAlgorithm
 
 
-class RF(BaseAlgorithm):
+class XGboost(BaseAlgorithm):
     """
-    Class to compute Random forest classifier.
+    Class to compute Xgboost classifier.
 
     Parameters
     ----------
@@ -36,7 +35,7 @@ class RF(BaseAlgorithm):
         batch_key: str | None = "_batch_annotation",
         labels_key: str | None = "_labels_annotation",
         layer_key: str | None = None,
-        result_key: str | None = "popv_rf_prediction",
+        result_key: str | None = "popv_xgboost_prediction",
         classifier_dict: str | None = {},
     ) -> None:
         super().__init__(
@@ -47,9 +46,9 @@ class RF(BaseAlgorithm):
         )
 
         self.classifier_dict = {
-            "class_weight": "balanced_subsample",
-            "max_features": 200,
-            "n_jobs": settings.n_jobs,
+            "tree_method": "hist",
+            "device": "cuda" if settings.cuml else "cpu",
+            "objective": "multi:softprob",
         }
         if classifier_dict is not None:
             self.classifier_dict.update(classifier_dict)
@@ -60,9 +59,10 @@ class RF(BaseAlgorithm):
         )
 
         test_x = adata.layers[self.layer_key] if self.layer_key else adata.X
+        test_y = adata.obs[self.labels_key].cat.codes.to_numpy()
+        dtest = xgb.DMatrix(test_x, test_y)
 
         if adata.uns["_prediction_mode"] == "retrain":
-            # CUML RF doesn't support pickling.
             train_idx = adata.obs["_ref_subsample"]
             train_x = (
                 adata[train_idx].layers[self.layer_key]
@@ -70,25 +70,21 @@ class RF(BaseAlgorithm):
                 else adata[train_idx].X
             )
             train_y = adata.obs.loc[train_idx, self.labels_key].cat.codes.to_numpy()
-            rf = RandomForestClassifier(**self.classifier_dict)
-            rf.fit(train_x, train_y)
-            if adata.uns["_save_path_trained_models"]:
-                pickle.dump(
-                    rf,
-                    open(
-                        os.path.join(adata.uns["_save_path_trained_models"], "rf_classifier.pkl"),
-                        "wb",
-                    ),
-                )
-        else:
-            rf = pickle.load(
-                open(os.path.join(adata.uns["_save_path_trained_models"], "rf_classifier.pkl"), "rb")
-            )
+            dtrain = xgb.DMatrix(train_x, train_y)
+            self.classifier_dict["num_class"] = len(adata.uns["label_categories"])
 
+            bst = xgb.train(self.classifier_dict, dtrain, num_boost_round=300)
+            if adata.uns["_save_path_trained_models"]:
+                bst.save_model(os.path.join(adata.uns["_save_path_trained_models"], "xgboost_classifier.model"))
+        else:
+            bst = xgb.Booster({"device": "cuda" if False else "cpu"})
+            bst.load_model(os.path.join(adata.uns["_save_path_trained_models"], "xgboost_classifier.model"))
+
+        output_probabilities = bst.predict(dtest)
         adata.obs[self.result_key] = adata.uns["label_categories"][
-            rf.predict(test_x)
+            np.argmax(output_probabilities, axis=1)
         ]
         if self.return_probabilities:
             adata.obs[f"{self.result_key}_probabilities"] = np.max(
-                rf.predict_proba(test_x), axis=1
+                output_probabilities, axis=1
             ).astype(float)

@@ -7,6 +7,7 @@ from ._scanorama import SCANORAMA as knn_on_scanorama
 from ._scanvi import SCANVI_POPV as scanvi
 from ._scvi import SCVI_POPV as knn_on_scvi
 from ._svm import SVM as svm
+from ._xgboost import XGboost as xgboost
 
 __all__ = [
     "base_algorithm",
@@ -19,4 +20,5 @@ __all__ = [
     "rf",
     "scanvi",
     "svm",
+    "xgboost",
 ]

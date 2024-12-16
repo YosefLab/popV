@@ -17,6 +17,8 @@ from tqdm import tqdm
 
 from popv import _utils, algorithms
 
+OutDatedAlgorithms = ["rf", "knn_on_scanorama"]
+
 
 def annotate_data(
     adata: anndata.AnnData,
@@ -47,7 +49,7 @@ def annotate_data(
         methods
         if methods is not None
         else (
-            [i[0] for i in inspect.getmembers(algorithms, inspect.isclass)]
+            [i[0] for i in inspect.getmembers(algorithms, inspect.isclass) if i not in OutDatedAlgorithms]
             if not adata.uns["_prediction_mode"] == "fast"
             else ["knn_on_scvi", "scanvi", "svm", "rf", "onclass", "celltypist"]
         )

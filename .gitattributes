@@ -1,2 +1,4 @@
 *.py linguist-language=python
 *.ipynb linguist-documentation
+*.h5ad filter=lfs diff=lfs merge=lfs -text
+*.nlp.emb filter=lfs diff=lfs merge=lfs -text

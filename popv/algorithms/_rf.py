@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 import os
-import pickle
+import joblib
 
 import numpy as np
 from sklearn.ensemble import RandomForestClassifier
@@ -37,6 +37,7 @@ class RF(BaseAlgorithm):
         labels_key: str | None = "_labels_annotation",
         layer_key: str | None = None,
         result_key: str | None = "popv_rf_prediction",
+        enable_cuml: bool = settings.cuml,
         classifier_dict: str | None = {},
     ) -> None:
         super().__init__(
@@ -53,6 +54,7 @@ class RF(BaseAlgorithm):
         }
         if classifier_dict is not None:
             self.classifier_dict.update(classifier_dict)
+        self.enable_cuml = enable_cuml
 
     def _predict(self, adata):
         logging.info(
@@ -62,7 +64,7 @@ class RF(BaseAlgorithm):
         test_x = adata.layers[self.layer_key] if self.layer_key else adata.X
 
         if adata.uns["_prediction_mode"] == "retrain":
-            # CUML RF doesn't support pickling.
+            # CUML RF doesn't support pickling, we always use sklearn RF
             train_idx = adata.obs["_ref_subsample"]
             train_x = (
                 adata[train_idx].layers[self.layer_key]
@@ -72,17 +74,16 @@ class RF(BaseAlgorithm):
             train_y = adata.obs.loc[train_idx, self.labels_key].cat.codes.to_numpy()
             rf = RandomForestClassifier(**self.classifier_dict)
             rf.fit(train_x, train_y)
-            if adata.uns["_save_path_trained_models"]:
-                pickle.dump(
-                    rf,
-                    open(
-                        os.path.join(adata.uns["_save_path_trained_models"], "rf_classifier.pkl"),
-                        "wb",
-                    ),
-                )
+            joblib.dump(
+                rf,
+                open(
+                    os.path.join(adata.uns["_save_path_trained_models"], "rf_classifier.joblib"),
+                    "wb",
+                ),
+            )
         else:
-            rf = pickle.load(
-                open(os.path.join(adata.uns["_save_path_trained_models"], "rf_classifier.pkl"), "rb")
+            rf = joblib.load(
+                open(os.path.join(adata.uns["_save_path_trained_models"], "rf_classifier.joblib"), "rb")
             )
 
         adata.obs[self.result_key] = adata.uns["label_categories"][

@@ -5,11 +5,12 @@ from __future__ import annotations
 import inspect
 import logging
 import os
-import pickle
 import string
 from collections import defaultdict
+from dataclasses import dataclass, field
 
 import anndata
+import joblib
 import networkx as nx
 import numpy as np
 import pandas as pd
@@ -17,7 +18,23 @@ from tqdm import tqdm
 
 from popv import _utils, algorithms
 
-OutDatedAlgorithms = ["rf", "knn_on_scanorama"]
+
+@dataclass
+class AlgorithmsNT:
+    OUTDATED_ALGORITHMS: tuple[str, ...] = ("rf", "knn_on_scanorama")
+    FAST_ALGORITHMS: tuple[str, ...] = ("knn_on_scvi", "scanvi", "svm", "xgboost", "onclass", "celltypist")
+    CURRENT_ALGORITHMS: tuple[str, ...] = field(init=False)
+    ALL_ALGORITHMS: tuple[str, ...] = field(init=False)
+
+    def __post_init__(self):
+        self.CURRENT_ALGORITHMS = tuple(
+            i[0] for i in inspect.getmembers(algorithms, inspect.isclass)
+            if i[0] not in self.OUTDATED_ALGORITHMS
+        )
+        self.ALL_ALGORITHMS = tuple(i[0] for i in inspect.getmembers(algorithms, inspect.isclass))
+
+# Example usage
+algorithms_nt = AlgorithmsNT()
 
 
 def annotate_data(
@@ -46,12 +63,11 @@ def annotate_data(
     if save_path is not None and not os.path.exists(save_path):
         os.makedirs(save_path, exist_ok=True)
     methods = (
-        methods
-        if methods is not None
+        methods if isinstance(methods, list)
+        else algorithms_nt.ALL_ALGORITHMS if methods=="all"
         else (
-            [i[0] for i in inspect.getmembers(algorithms, inspect.isclass) if i not in OutDatedAlgorithms]
-            if not adata.uns["_prediction_mode"] == "fast"
-            else ["knn_on_scvi", "scanvi", "svm", "rf", "onclass", "celltypist"]
+            algorithms_nt.FAST_ALGORITHMS if adata.uns["_prediction_mode"] == "fast"
+            else algorithms_nt.CURRENT_ALGORITHMS
         )
     )
 
@@ -75,6 +91,8 @@ def annotate_data(
     logging.info(f"Using predictions {all_prediction_keys} for PopV consensus")
     adata.uns["prediction_keys"] = all_prediction_keys
     adata.uns["prediction_keys_seen"] = all_prediction_keys_seen
+    adata.uns["methods"] = list(methods)
+    adata.uns["method_kwargs"] = methods_kwargs
     compute_consensus(adata, all_prediction_keys_seen)
     # No ontology prediction if ontology is set to False.
     if adata.uns["_cl_obo_file"] is False:
@@ -154,12 +172,12 @@ def ontology_vote_onclass(
     if adata.uns["_prediction_mode"] == "retrain":
         G = _utils.make_ontology_dag(adata.uns["_cl_obo_file"])
         if adata.uns["_save_path_trained_models"] is not None:
-            pickle.dump(
-                G, open(os.path.join(adata.uns["_save_path_trained_models"], "obo_dag.pkl"), "wb")
+            joblib.dump(
+                G, open(os.path.join(adata.uns["_save_path_trained_models"], "obo_dag.joblib"), "wb")
             )
     else:
-        G = pickle.load(
-            open(os.path.join(adata.uns["_save_path_trained_models"], "obo_dag.pkl"), "rb")
+        G = joblib.load(
+            open(os.path.join(adata.uns["_save_path_trained_models"], "obo_dag.joblib"), "rb")
         )
 
     cell_type_root_to_node = {}
@@ -251,12 +269,12 @@ def ontology_parent_onclass(
     if adata.uns["_prediction_mode"] == "retrain":
         G = _utils.make_ontology_dag(adata.uns["_cl_obo_file"])
         if adata.uns["_save_path_trained_models"] is not None:
-            pickle.dump(
-                G, open(os.path.join(adata.uns["_save_path_trained_models"], "obo_dag.pkl"), "wb")
+            joblib.dump(
+                G, open(os.path.join(adata.uns["_save_path_trained_models"], "obo_dag.joblib"), "wb")
             )
     else:
-        G = pickle.load(
-            open(os.path.join(adata.uns["_save_path_trained_models"], "obo_dag.pkl"), "rb")
+        G = joblib.load(
+            open(os.path.join(adata.uns["_save_path_trained_models"], "obo_dag.joblib"), "rb")
         )
 
     cell_type_root_to_node = {}

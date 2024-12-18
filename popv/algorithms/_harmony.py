@@ -5,7 +5,7 @@ import logging
 import numpy as np
 import scanpy as sc
 from harmony import harmonize
-from pynndescent import PyNNDescentTransformer
+from sklearn_ann.kneighbors.faiss import FAISSTransformer
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.pipeline import make_pipeline
 
@@ -84,23 +84,20 @@ class HARMONY(BaseAlgorithm):
         logging.info(f'Saving knn on harmony results to adata.obs["{result_key}"]')
 
         ref_idx = adata.obs["_labelled_train_indices"]
-        train_X = adata[ref_idx].obsm["X_pca_harmony"]
+        adata.obsm['X_pca_harmony'] = np.ascontiguousarray(adata.obsm['X_pca_harmony'])
+        adata[ref_idx].obsm["X_pca_harmony"] = adata[ref_idx].obsm["X_pca_harmony"]
+        train_X = np.array(adata[ref_idx].copy().obsm["X_pca_harmony"])
         train_Y = adata.obs.loc[ref_idx, self.labels_key].cat.codes.to_numpy()
 
-        if settings.cuml:
-            from cuml.neighbors import KNeighborsClassifier as cuKNeighbors
-
-            knn = cuKNeighbors(n_neighbors=self.classifier_dict["n_neighbors"])
-        else:
-            knn = make_pipeline(
-                PyNNDescentTransformer(
-                    n_neighbors=self.classifier_dict["n_neighbors"],
-                    parallel_batch_queries=True,
-                ),
-                KNeighborsClassifier(
-                    metric="precomputed", weights=self.classifier_dict["weights"]
-                ),
-            )
+        knn = make_pipeline(
+            FAISSTransformer(
+                n_neighbors=self.classifier_dict["n_neighbors"],
+                n_jobs=settings.n_jobs
+            ),
+            KNeighborsClassifier(
+                metric="precomputed", weights=self.classifier_dict["weights"]
+            ),
+        )
 
         knn.fit(train_X, train_Y)
         knn_pred = knn.predict(adata.obsm["X_pca_harmony"])

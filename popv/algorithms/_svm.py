@@ -4,6 +4,7 @@ import logging
 import os
 import pickle
 
+import joblib
 import numpy as np
 import pandas as pd
 import scipy.sparse as scp
@@ -39,6 +40,7 @@ class SVM(BaseAlgorithm):
         layer_key: str | None = None,
         result_key: str | None = "popv_svm_prediction",
         classifier_dict: str | None = {},
+        train_both: bool = False,
     ) -> None:
         super().__init__(
             batch_key=batch_key,
@@ -54,6 +56,7 @@ class SVM(BaseAlgorithm):
         }
         if classifier_dict is not None:
             self.classifier_dict.update(classifier_dict)
+        self.train_both = train_both
 
     def _predict(self, adata):
         logging.info(
@@ -76,30 +79,39 @@ class SVM(BaseAlgorithm):
                 self.classifier_dict["probability"] = self.return_probabilities
                 clf = OneVsRestClassifier(LinearSVC(**self.classifier_dict))
                 train_x = train_x.todense()
-            else:
-                clf = CalibratedClassifierCV(svm.LinearSVC(**self.classifier_dict))
-            clf.fit(train_x, train_y)
-            if adata.uns["_save_path_trained_models"]:
-                pickle.dump(
+                clf.fit(train_x, train_y)
+                joblib.dump(
                     clf,
                     open(
-                        os.path.join(adata.uns["_save_path_trained_models"], "svm_classifier.pkl"),
+                        os.path.join(adata.uns["_save_path_trained_models"], "svm_classifier_cuml.joblib"),
                         "wb",
                     ),
                 )
-        clf = pickle.load(
-            open(
-                os.path.join(adata.uns["_save_path_trained_models"], "svm_classifier.pkl"), "rb"
-            )
-        )
+                self.classifier_dict.pop("probability")
+            if not settings.cuml or self.train_both:
+                clf = CalibratedClassifierCV(svm.LinearSVC(**self.classifier_dict))
+                clf.fit(train_x, train_y)
+                joblib.dump(
+                    clf,
+                    open(
+                        os.path.join(adata.uns["_save_path_trained_models"], "svm_classifier.joblib"),
+                        "wb",
+                    ),
+                )
+
 
         if settings.cuml and scp.issparse(test_x):
+            clf = joblib.load(
+                open(
+                    os.path.join(adata.uns["_save_path_trained_models"], "svm_classifier_cuml.joblib"), "rb"
+                )
+            )
             if self.return_probabilities:
                 required_columns = [self.result_key, f"{self.result_key}_probabilities"]
             else:
                 required_columns = [self.result_key]
 
-            result_df = pd.DataFrame(index=adata.obs_names, columns=required_columns)
+            result_df = pd.DataFrame(index=adata.obs_names, columns=required_columns, dtype=float)
             shard_size = int(settings.shard_size)
             for i in range(0, adata.n_obs, shard_size):
                 tmp_x = test_x[i : i + shard_size]
@@ -112,6 +124,11 @@ class SVM(BaseAlgorithm):
                     ).astype(float)
             adata.obs[result_df.columns] = result_df
         else:
+            clf = pickle.load(
+                open(
+                    os.path.join(adata.uns["_save_path_trained_models"], "svm_classifier.joblib"), "rb"
+                )
+            )
             adata.obs[self.result_key] = adata.uns["label_categories"][clf.predict(test_x)]
             if self.return_probabilities:
                 adata.obs[f"{self.result_key}_probabilities"] = np.max(

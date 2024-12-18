@@ -4,7 +4,6 @@ import logging
 import os
 
 import numpy as np
-import obonet
 import pandas as pd
 import scipy
 from OnClass.OnClassModel import OnClassModel
@@ -121,7 +120,7 @@ class ONCLASS(BaseAlgorithm):
         else:
             required_columns = [self.seen_result_key, self.result_key]
 
-        result_df = pd.DataFrame(index=adata.obs_names, columns=required_columns)
+        result_df = pd.DataFrame(index=adata.obs_names, columns=required_columns, dtype=float)
         shard_size = int(settings.shard_size)
         for i in range(0, adata.n_obs, shard_size):
             tmp_x = test_x[i : i + shard_size]
@@ -157,12 +156,12 @@ class ONCLASS(BaseAlgorithm):
                 result_df.loc[names_x, self.seen_result_key] = pred_label_str
 
                 if self.return_probabilities:
-                    result_df.loc[names_x, f"{self.result_key}_probabilities"] = np.max(
-                        onclass_pred[1], axis=1
-                    ) / onclass_pred[1].sum(1)
+                    result_df.loc[names_x, f"{self.result_key}_probabilities"] = (
+                        np.max(onclass_pred[1], axis=1) / onclass_pred[1].sum(1)
+                    ).astype(float)
                     result_df.loc[names_x, f"{self.seen_result_key}_probabilities"] = (
                         np.max(onclass_pred[0], axis=1)
-                    )
+                    ).astype(float)
         adata.obs[result_df.columns] = result_df
 
     def _compute_embedding(self, adata):

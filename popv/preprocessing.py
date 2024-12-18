@@ -3,7 +3,6 @@ from __future__ import annotations
 import json
 import logging
 import os
-import subprocess
 import warnings
 
 import anndata
@@ -25,7 +24,7 @@ class Process_Query:
     query_adata
         AnnData of query cells
     ref_adata
-        AnnData of reference cells
+        AnnData of reference cells. Can be False if prediction_mode is 'fast'.
     ref_labels_key
         Key in obs field of reference AnnData with cell-type information
     ref_batch_key
@@ -67,7 +66,7 @@ class Process_Query:
     def __init__(
         self,
         query_adata: anndata.AnnData,
-        ref_adata: anndata.AnnData,
+        ref_adata: anndata.AnnData | bool,
         ref_labels_key: str,
         ref_batch_key: str,
         cl_obo_folder: list | str | bool,
@@ -81,6 +80,15 @@ class Process_Query:
         pretrained_scvi_path: str | None = None,
         hvg: int | None = 4000,
     ) -> None:
+        if not ref_adata and prediction_mode != "fast":
+            ValueError(
+                "Reference dataset is required if prediction mode is not 'fast'."
+            )
+        self.setup_dict = {
+            "ref_labels_key": ref_labels_key,
+            "ref_batch_key": ref_batch_key,
+            "unknown_celltype_label": unknown_celltype_label,
+        }
         self.labels_key = {"reference": ref_labels_key, "query": query_labels_key}
         self.unknown_celltype_label = unknown_celltype_label
         self.batch_key = {"reference": ref_batch_key, "query": query_batch_key}
@@ -259,6 +267,7 @@ class Process_Query:
             "category"
         )
 
+        adata.obs["_reference_labels_annotation"] = adata.obs[self.labels_key["reference"]]
         adata.obs["_labels_annotation"] = self.unknown_celltype_label
         if self.labels_key[key] is not None:
             adata.obs["_labels_annotation"] = adata.obs[self.labels_key[key]].astype(
@@ -356,10 +365,11 @@ class Process_Query:
         self.adata.uns["unknown_celltype_label"] = self.unknown_celltype_label
         if self.prediction_mode == "retrain":
             self.label_categories = list(self.adata.obs["_labels_annotation"].cat.categories)
-        self.adata.uns["label_categories"] = pd.Index(self.label_categories)
+        self.adata.uns["label_categories"] = np.array(self.label_categories)
         self.adata.uns["_pretrained_scvi_path"] = self.pretrained_scvi_path
         self.adata.uns["_save_path_trained_models"] = self.save_path_trained_models
         self.adata.uns["_prediction_mode"] = self.prediction_mode
+        self.adata.uns["_setup_dict"] = self.setup_dict
         self.adata.uns["_cl_obo_file"] = self.cl_obo_file
         self.adata.uns["_cl_ontology_file"] = self.cl_ontology_file
         self.adata.uns["_nlp_emb_file"] = self.nlp_emb_file

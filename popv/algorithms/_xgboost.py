@@ -74,8 +74,7 @@ class XGboost(BaseAlgorithm):
             self.classifier_dict["num_class"] = len(adata.uns["label_categories"])
 
             bst = xgb.train(self.classifier_dict, dtrain, num_boost_round=300)
-            if adata.uns["_save_path_trained_models"]:
-                bst.save_model(os.path.join(adata.uns["_save_path_trained_models"], "xgboost_classifier.model"))
+            bst.save_model(os.path.join(adata.uns["_save_path_trained_models"], "xgboost_classifier.model"))
         else:
             bst = xgb.Booster({"device": "cuda" if False else "cpu"})
             bst.load_model(os.path.join(adata.uns["_save_path_trained_models"], "xgboost_classifier.model"))

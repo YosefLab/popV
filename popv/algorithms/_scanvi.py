@@ -152,12 +152,11 @@ class SCANVI_POPV(BaseAlgorithm):
         else:
             self.model.train(**self.train_kwargs)
         if adata.uns["_prediction_mode"] == "retrain":
-            if adata.uns["_save_path_trained_models"]:
-                self.model.save(
-                    os.path.join(adata.uns["_save_path_trained_models"], "scanvi"),
-                    save_anndata=False,
-                    overwrite=True,
-                )
+            self.model.save(
+                os.path.join(adata.uns["_save_path_trained_models"], "scanvi"),
+                save_anndata=False,
+                overwrite=True,
+            )
 
     def _predict(self, adata):
         logging.info(

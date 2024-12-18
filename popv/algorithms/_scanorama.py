@@ -7,6 +7,7 @@ import numpy as np
 import scanorama
 import scanpy as sc
 from pynndescent import PyNNDescentTransformer
+from sklearn_ann.kneighbors.faiss import FAISSTransformer
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.pipeline import make_pipeline
 
@@ -91,20 +92,15 @@ class SCANORAMA(BaseAlgorithm):
         train_X = adata[ref_idx].obsm["X_scanorama"]
         train_Y = adata.obs.loc[ref_idx, self.labels_key].cat.codes.to_numpy()
 
-        if settings.cuml:
-            from cuml.neighbors import KNeighborsClassifier as cuKNeighbors
-
-            knn = cuKNeighbors(n_neighbors=self.classifier_dict["n_neighbors"])
-        else:
-            knn = make_pipeline(
-                PyNNDescentTransformer(
-                    n_neighbors=self.classifier_dict["n_neighbors"],
-                    parallel_batch_queries=True,
-                ),
-                KNeighborsClassifier(
-                    metric="precomputed", weights=self.classifier_dict["weights"]
-                ),
-            )
+        knn = make_pipeline(
+            FAISSTransformer(
+                n_neighbors=self.classifier_dict["n_neighbors"],
+                n_jobs=settings.n_jobs
+            ),
+            KNeighborsClassifier(
+                metric="precomputed", weights=self.classifier_dict["weights"]
+            ),
+        )
 
         knn.fit(train_X, train_Y)
         knn_pred = knn.predict(adata.obsm["X_scanorama"])

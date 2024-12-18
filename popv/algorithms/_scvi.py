@@ -2,14 +2,14 @@ from __future__ import annotations
 
 import logging
 import os
-import pickle
 
+import joblib
 import numpy as np
 import scanpy as sc
-from pynndescent import PyNNDescentTransformer
 from scvi.model import SCVI
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.pipeline import make_pipeline
+from sklearn_ann.kneighbors.faiss import FAISSTransformer
 
 from popv import settings
 from popv.algorithms._base_algorithm import BaseAlgorithm
@@ -24,7 +24,7 @@ class SCVI_POPV(BaseAlgorithm):
         result_key: str | None = "popv_knn_on_scvi_prediction",
         embedding_key: str | None = "X_scvi_umap_popv",
         model_kwargs: dict | None = None,
-        classifier_kwargs: dict | None = None,
+        classifier_dict: dict | None = None,
         embedding_kwargs: dict | None = None,
         train_kwargs: dict | None = None,
     ) -> None:
@@ -60,8 +60,8 @@ class SCVI_POPV(BaseAlgorithm):
         )
         if embedding_kwargs is None:
             embedding_kwargs = {}
-        if classifier_kwargs is None:
-            classifier_kwargs = {}
+        if classifier_dict is None:
+            classifier_dict = {}
         if model_kwargs is None:
             model_kwargs = {}
         if train_kwargs is None:
@@ -82,9 +82,9 @@ class SCVI_POPV(BaseAlgorithm):
         if model_kwargs is not None:
             self.model_kwargs.update(model_kwargs)
 
-        self.classifier_kwargs = {"weights": "uniform", "n_neighbors": 15}
-        if classifier_kwargs is not None:
-            self.classifier_kwargs.update(classifier_kwargs)
+        self.classifier_dict = {"weights": "uniform", "n_neighbors": 15}
+        if classifier_dict is not None:
+            self.classifier_dict.update(classifier_dict)
 
         self.train_kwargs = {
             "max_epochs": 20,
@@ -160,33 +160,27 @@ class SCVI_POPV(BaseAlgorithm):
 
             train_X = adata[ref_idx].obsm["X_scvi"]
             train_Y = adata.obs.loc[ref_idx, self.labels_key].cat.codes.to_numpy()
-            if settings.cuml:
-                from cuml.neighbors import KNeighborsClassifier as cuKNeighbors
-
-                knn = cuKNeighbors(n_neighbors=self.classifier_kwargs["n_neighbors"])
-            else:
-                knn = make_pipeline(
-                    PyNNDescentTransformer(
-                        n_neighbors=self.classifier_kwargs["n_neighbors"],
-                        parallel_batch_queries=True,
-                    ),
-                    KNeighborsClassifier(
-                        metric="precomputed", weights=self.classifier_kwargs["weights"]
-                    ),
-                )
+            knn = make_pipeline(
+                FAISSTransformer(
+                    n_neighbors=self.classifier_dict["n_neighbors"],
+                    n_jobs=settings.n_jobs
+                ),
+                KNeighborsClassifier(
+                    metric="precomputed", weights=self.classifier_dict["weights"]
+                ),
+            )
             knn.fit(train_X, train_Y)
-            if adata.uns["_save_path_trained_models"]:
-                pickle.dump(
-                    knn,
-                    open(
-                        os.path.join(adata.uns["_save_path_trained_models"], "scvi_knn_classifier.pkl"),
-                        "wb",
-                    ),
-                )
-        else:
-            knn = pickle.load(
+            joblib.dump(
+                knn,
                 open(
-                    os.path.join(adata.uns["_save_path_trained_models"], "scvi_knn_classifier.pkl"),
+                    os.path.join(adata.uns["_save_path_trained_models"], "scvi_knn_classifier.joblib"),
+                    "wb",
+                ),
+            )
+        else:
+            knn = joblib.load(
+                open(
+                    os.path.join(adata.uns["_save_path_trained_models"], "scvi_knn_classifier.joblib"),
                     "rb",
                 )
             )

@@ -56,7 +56,7 @@ class Config:
         self.n_jobs = n_jobs
         self.cuml = cuml
         self.shard_size = shard_size
-        self.accelerator = "cpu"
+        self.accelerator = "auto"
         self.return_probabilities = True
         self.compute_embedding = True
 

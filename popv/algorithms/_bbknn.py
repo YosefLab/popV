@@ -55,11 +55,11 @@ class BBKNN(BaseAlgorithm):
             method_kwargs = {}
 
         self.method_kwargs = {
-            "metric": "euclidean" if self.enable_cuml else "cosine",
-            "approx": not self.enable_cuml,  # FAISS if cuml
+            "metric": "euclidean",
+            "approx": False,
             "n_pcs": 50,
-            "neighbors_within_batch": 3 if self.enable_cuml else 8,
-            "use_annoy": False,  # pynndescent
+            "neighbors_within_batch": 5,
+            "use_annoy": False,
         }
         if method_kwargs is not None:
             self.method_kwargs.update(method_kwargs)
@@ -73,12 +73,13 @@ class BBKNN(BaseAlgorithm):
 
     def _compute_integration(self, adata):
         logging.info("Integrating data with bbknn")
-        if len(adata.obs[self.batch_key].unique()) > 100 and self.enable_cuml:
+        if len(adata.obs[self.batch_key].unique()) > 100:
             logging.warning(
-                "Using PyNNDescent instead of RAPIDS as high number of batches leads to OOM."
+                "Using PyNNDescent instead of FAISS as high number of batches leads to OOM."
             )
-            self.method_kwargs["approx"] = True
-        sc.external.pp.bbknn(adata, batch_key=self.batch_key, **self.method_kwargs)
+            sc.external.pp.bbknn(adata, batch_key=self.batch_key, use_faiss=False)
+        else:
+            sc.external.pp.bbknn(adata, batch_key=self.batch_key, use_faiss=True)
 
     def _predict(self, adata):
         logging.info(f'Saving knn on bbknn results to adata.obs["{self.result_key}"]')

@@ -84,8 +84,7 @@ class CELLTYPIST(BaseAlgorithm):
                 **self.method_kwargs,
             )
 
-            if adata.uns["_save_path_trained_models"]:
-                model.write(os.path.join(adata.uns["_save_path_trained_models"], "celltypist.pkl"))
+            model.write(os.path.join(adata.uns["_save_path_trained_models"], "celltypist.pkl"))
         predictions = celltypist.annotate(
             adata,
             model=os.path.join(adata.uns["_save_path_trained_models"], "celltypist.pkl"),

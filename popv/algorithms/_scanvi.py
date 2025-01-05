@@ -4,6 +4,7 @@ import logging
 import os
 
 import numpy as np
+import pandas as pd
 import scanpy as sc
 import scvi
 
@@ -99,19 +100,6 @@ class SCANVI_POPV(BaseAlgorithm):
 
     def _compute_integration(self, adata):
         logging.info("Integrating data with scANVI")
-
-        # Go through obs field with subsampling information and subsample label information.
-        if "subsampled_labels" not in adata.obs.columns:
-            adata.obs["subsampled_labels"] = [
-                label if subsampled else adata.uns["unknown_celltype_label"]
-                for label, subsampled in zip(
-                    adata.obs["_labels_annotation"], adata.obs["_ref_subsample"], strict=True
-                )
-            ]
-        adata.obs["subsampled_labels"] = adata.obs["subsampled_labels"].astype(
-            "category"
-        )
-
         if adata.uns["_prediction_mode"] == "retrain":
             if adata.uns["_pretrained_scvi_path"]:
                 scvi_model = scvi.model.SCVI.load(
@@ -121,7 +109,7 @@ class SCANVI_POPV(BaseAlgorithm):
                 scvi.model.SCVI.setup_anndata(
                     adata,
                     batch_key=self.batch_key,
-                    labels_key="subsampled_labels",
+                    labels_key=self.labels_key,
                     layer="scvi_counts",
                 )
                 scvi_model = scvi.model.SCVI(adata, **self.model_kwargs)
@@ -137,7 +125,7 @@ class SCANVI_POPV(BaseAlgorithm):
                 classifier_parameters=self.classifier_kwargs,
             )
         else:
-            query = adata[adata.obs["_dataset"] == "query"].copy()
+            query = adata[adata.obs["_predict_cells"] == "relabel"].copy()
             self.model = scvi.model.SCANVI.load_query_data(
                 query,
                 os.path.join(adata.uns["_save_path_trained_models"], "scanvi"),
@@ -145,12 +133,8 @@ class SCANVI_POPV(BaseAlgorithm):
             )
 
         if adata.uns["_prediction_mode"] == "fast":
-            if self.max_epochs is None:
-                self.train_kwargs.update({"max_epochs": 1})
-
-            self.model.train(**self.train_kwargs)
-        else:
-            self.model.train(**self.train_kwargs)
+            self.train_kwargs.update({"max_epochs": 1})
+        self.model.train(**self.train_kwargs)
         if adata.uns["_prediction_mode"] == "retrain":
             self.model.save(
                 os.path.join(adata.uns["_save_path_trained_models"], "scanvi"),
@@ -163,10 +147,15 @@ class SCANVI_POPV(BaseAlgorithm):
             f'Saving scanvi label prediction to adata.obs["{self.result_key}"]'
         )
 
-        adata.obs[self.result_key] = self.model.predict(adata)
+        if self.result_key not in adata.obs.columns:
+            adata.obs[self.result_key] = adata.uns["unknown_celltype_label"]
+        adata.obs.loc[adata.obs["_predict_cells"] == "relabel", self.result_key] = self.model.predict(
+            adata[adata.obs["_predict_cells"] == "relabel"])
         if self.return_probabilities:
-            adata.obs[f"{self.result_key}_probabilities"] = np.max(
-                self.model.predict(adata, soft=True), axis=1
+            if f"{self.result_key}_probabilities" not in adata.obs.columns:
+                adata.obs[f"{self.result_key}_probabilities"] = pd.Series(dtype="float64")
+            adata.obs.loc[adata.obs["_predict_cells"] == "relabel", f"{self.result_key}_probabilities"] = np.max(
+                self.model.predict(adata[adata.obs["_predict_cells"] == "relabel"], soft=True), axis=1
             )
 
     def _compute_embedding(self, adata):
@@ -174,7 +163,13 @@ class SCANVI_POPV(BaseAlgorithm):
             logging.info(
                 f'Saving UMAP of scanvi results to adata.obs["{self.embedding_key}"]'
             )
-            adata.obsm["X_scanvi"] = self.model.get_latent_representation(adata)
+            # Update the .obsm["X_scanvi"] only for the relevant rows
+            latent_representation = self.model.get_latent_representation()
+            relabel_indices = adata.obs["_predict_cells"] == "relabel"
+            if "X_scanvi" not in adata.obsm:
+                # Initialize X_scanvi with the correct shape if it doesn't exist
+                adata.obsm["X_scanvi"] = np.zeros((adata.n_obs, latent_representation.shape[1]))
+            adata.obsm["X_scanvi"][relabel_indices, :] = latent_representation
             transformer = "rapids" if settings.cuml else None
             sc.pp.neighbors(adata, use_rep="X_scanvi", transformer=transformer)
             method = "rapids" if settings.cuml else "umap"

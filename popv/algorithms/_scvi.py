@@ -5,6 +5,7 @@ import os
 
 import joblib
 import numpy as np
+import pandas as pd
 import scanpy as sc
 from scvi.model import SCVI
 from sklearn.neighbors import KNeighborsClassifier
@@ -101,36 +102,22 @@ class SCVI_POPV(BaseAlgorithm):
 
     def _compute_integration(self, adata):
         logging.info("Integrating data with scvi")
-
-        # Go through obs field with subsampling information and subsample label information.
-        if "subsampled_labels" not in adata.obs.columns:
-            adata.obs["subsampled_labels"] = [
-                label if subsampled else adata.uns["unknown_celltype_label"]
-                for label, subsampled in zip(
-                    adata.obs["_labels_annotation"], adata.obs["_ref_subsample"], strict=True
-                )
-            ]
-        adata.obs["subsampled_labels"] = adata.obs["subsampled_labels"].astype(
-            "category"
-        )
-
         if not adata.uns["_pretrained_scvi_path"]:
             SCVI.setup_anndata(
                 adata,
                 batch_key=self.batch_key,
-                labels_key="subsampled_labels",
+                labels_key=self.labels_key,
                 layer="scvi_counts",
             )
             model = SCVI(adata, **self.model_kwargs)
             logging.info("Training scvi offline.")
         else:
-            query = adata[adata.obs["_dataset"] == "query"].copy()
+            query = adata[adata.obs["_predict_cells"] == "relabel"].copy()
             model = SCVI.load_query_data(query, adata.uns["_pretrained_scvi_path"])
             logging.info("Training scvi online.")
 
         if adata.uns["_prediction_mode"] == "fast":
-            if self.max_epochs is None:
-                self.train_kwargs["max_epochs"] = 1
+            self.train_kwargs["max_epochs"] = 1
             model.train(**self.train_kwargs)
         else:
             if self.max_epochs is None:
@@ -150,7 +137,12 @@ class SCVI_POPV(BaseAlgorithm):
                     overwrite=True,
                 )
 
-        adata.obsm["X_scvi"] = model.get_latent_representation(adata)
+        latent_representation = model.get_latent_representation()
+        relabel_indices = adata.obs["_predict_cells"] == "relabel"
+        if "X_scvi" not in adata.obsm:
+            # Initialize X_scanvi with the correct shape if it doesn't exist
+            adata.obsm["X_scvi"] = np.zeros((adata.n_obs, latent_representation.shape[1]))
+        adata.obsm["X_scvi"][relabel_indices, :] = latent_representation
 
     def _predict(self, adata):
         logging.info(f'Saving knn on scvi results to adata.obs["{self.result_key}"]')
@@ -158,7 +150,7 @@ class SCVI_POPV(BaseAlgorithm):
         if adata.uns["_prediction_mode"] == "retrain":
             ref_idx = adata.obs["_labelled_train_indices"]
 
-            train_X = adata[ref_idx].obsm["X_scvi"]
+            train_X = adata[ref_idx].obsm["X_scvi"].copy()
             train_Y = adata.obs.loc[ref_idx, self.labels_key].cat.codes.to_numpy()
             knn = make_pipeline(
                 FAISSTransformer(
@@ -185,13 +177,17 @@ class SCVI_POPV(BaseAlgorithm):
                 )
             )
 
-        knn_pred = knn.predict(adata.obsm["X_scvi"])
-
         # save_results
-        adata.obs[self.result_key] = adata.uns["label_categories"][knn_pred]
+        embedding = adata[adata.obs["_predict_cells"] == "relabel"].obsm["X_scvi"]
+        knn_pred = knn.predict(embedding)
+        if self.result_key not in adata.obs.columns:
+            adata.obs[self.result_key] = adata.uns["unknown_celltype_label"]
+        adata.obs.loc[adata.obs["_predict_cells"] == "relabel", self.result_key] = adata.uns["label_categories"][knn_pred]
         if self.return_probabilities:
-            adata.obs[f"{self.result_key}_probabilities"] = np.max(
-                knn.predict_proba(adata.obsm["X_scvi"]), axis=1
+            if f"{self.result_key}_probabilities" not in adata.obs.columns:
+                adata.obs[f"{self.result_key}_probabilities"] = pd.Series(dtype="float64")
+            adata.obs.loc[adata.obs["_predict_cells"] == "relabel", f"{self.result_key}_probabilities"] = np.max(
+                knn.predict_proba(embedding), axis=1
             )
 
     def _compute_embedding(self, adata):

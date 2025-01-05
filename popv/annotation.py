@@ -70,6 +70,14 @@ def annotate_data(
             else algorithms_nt.CURRENT_ALGORITHMS
         )
     )
+    if adata.uns["ref_prediction_keys"] is not None and adata.uns["_prediction_mode"] == "inference":
+        if not set(methods).issubset(adata.uns["ref_prediction_keys"]):
+            missing_methods = set(methods) - set(adata.uns["ref_prediction_keys"])
+            ValueError(
+                f"Method {missing_methods} are not present in the reference data."
+                "Use relabel_reference_cells=True in Process_Query or remove these methods."
+            )
+        adata.obs[adata.uns["ref_prediction_keys"]] = adata.obs[adata.uns["ref_prediction_keys"]].astype("object")
 
     if adata.uns["_cl_obo_file"] is False and "onclass" in methods:
         methods.remove("onclass")
@@ -144,6 +152,7 @@ def compute_consensus(adata: anndata.AnnData, prediction_keys: list) -> None:
 
     agreement = adata.obs[prediction_keys].apply(_utils.majority_count, axis=1)
     adata.obs["popv_majority_vote_score"] = agreement.values
+    adata.obs["popv_majority_vote_score"] = adata.obs["popv_majority_vote_score"].astype("category")
 
 
 def ontology_vote_onclass(

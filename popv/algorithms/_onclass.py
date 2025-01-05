@@ -68,10 +68,8 @@ class ONCLASS(BaseAlgorithm):
 
         if self.layer_key is None:
             train_x = adata[train_idx].X.copy()
-            test_x = adata.X.copy()
         else:
             train_x = adata[train_idx].layers[self.layer_key].copy()
-            test_x = adata.layers[self.layer_key].copy()
         if scipy.sparse.issparse(train_x):
             train_x = train_x.todense()
 
@@ -110,37 +108,56 @@ class ONCLASS(BaseAlgorithm):
         else:
             train_model.BuildModel(ngene=None, use_pretrain=model_path)
 
-        if self.return_probabilities:
-            required_columns = [
-                self.seen_result_key,
-                self.result_key,
-                f"{self.result_key}_probabilities",
-                f"{self.seen_result_key}_probabilities",
-            ]
+        subset = adata[adata.obs["_predict_cells"] == "relabel"]
+        if self.layer_key is None:
+            test_x = subset.X.copy()
         else:
-            required_columns = [self.seen_result_key, self.result_key]
+            test_x = subset.layers[self.layer_key].copy()
+        if self.return_probabilities:
+            required_columns = {
+                self.seen_result_key: pd.Series(index=subset.obs_names, dtype=str),
+                self.result_key: pd.Series(index=subset.obs_names, dtype=str),
+                f"{self.result_key}_probabilities": pd.Series(index=subset.obs_names, dtype=float),
+                f"{self.seen_result_key}_probabilities": pd.Series(index=subset.obs_names, dtype=float),
+            }
+        else:
+            required_columns = {
+                self.seen_result_key: pd.Series(index=subset.obs_names, dtype=str),
+                self.result_key: pd.Series(index=subset.obs_names, dtype=str),
+            }
 
-        result_df = pd.DataFrame(index=adata.obs_names, columns=required_columns, dtype=float)
+        result_df = pd.DataFrame(required_columns)
         shard_size = int(settings.shard_size)
-        for i in range(0, adata.n_obs, shard_size):
+        for i in range(0, subset.n_obs, shard_size):
             tmp_x = test_x[i : i + shard_size]
-            names_x = adata.obs_names[i : i + shard_size]
             if scipy.sparse.issparse(test_x):
                 tmp_x = tmp_x.todense()
+            names_x = subset.obs_names[i : i + shard_size]
             corr_test_feature = train_model.ProcessTestFeature(
                 test_feature=tmp_x,
-                test_genes=adata.var_names,
+                test_genes=subset.var_names,
                 use_pretrain=model_path,
                 log_transform=False,
             )
 
             if adata.uns["_prediction_mode"] == "fast":
-                onclass_seen = np.argmax(
-                    train_model.model.predict(corr_test_feature), axis=1
+                onclass_pred = train_model.Predict(
+                    corr_test_feature,
+                    use_normalize=False,
+                    refine=False,
+                    unseen_ratio=-0.0,
                 )
+                onclass_seen = np.argmax(onclass_pred, axis=1)
                 pred_label_str = [train_model.i2co[ind] for ind in onclass_seen]
                 result_df.loc[names_x, self.result_key] = pred_label_str
                 result_df.loc[names_x, self.seen_result_key] = pred_label_str
+                if self.return_probabilities:
+                    result_df.loc[names_x, f"{self.result_key}_probabilities"] = (
+                        np.max(onclass_pred, axis=1)
+                    )
+                    result_df.loc[names_x, f"{self.seen_result_key}_probabilities"] = (
+                        np.max(onclass_pred, axis=1)
+                    )
             else:
                 onclass_pred = train_model.Predict(
                     corr_test_feature,
@@ -158,11 +175,18 @@ class ONCLASS(BaseAlgorithm):
                 if self.return_probabilities:
                     result_df.loc[names_x, f"{self.result_key}_probabilities"] = (
                         np.max(onclass_pred[1], axis=1) / onclass_pred[1].sum(1)
-                    ).astype(float)
+                    )
                     result_df.loc[names_x, f"{self.seen_result_key}_probabilities"] = (
                         np.max(onclass_pred[0], axis=1)
-                    ).astype(float)
-        adata.obs[result_df.columns] = result_df
+                    )
+        for col in required_columns.keys():
+            if col not in adata.obs.columns:
+                if "probabilities" in col:
+                    adata.obs[col] = pd.Series(dtype="float64")  # Set dtype to float
+                else:
+                    adata.obs[col] = adata.uns["unknown_celltype_label"]
+                    adata.obs[col] = adata.obs[col].astype(str)  # Set dtype to string
+        adata.obs.loc[adata.obs["_predict_cells"] == "relabel", result_df.columns] = result_df
 
     def _compute_embedding(self, adata):
         return None

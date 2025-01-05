@@ -48,7 +48,7 @@ dependencies = [
     "scanpy",
     "scikit-learn>0.21.2,<1.2",
     "scikit-misc",
-    "sklearn-ann"
+    "sklearn-ann",
     "scvi-tools",
     "tensorflow",
     "harmony-pytorch",

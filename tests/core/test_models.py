@@ -1,11 +1,10 @@
 """Test various algorithms implemented in PopV."""
 
+import anndata
 import numpy as np
 import popv
 
 # Enable cuml in popv.setting depending on pytest flag
-import pytest
-
 #if pytest.config.getoption("--enable-cuml"):
 #    popv.setting.cuml = True
 import scanpy as sc
@@ -15,11 +14,16 @@ from popv.reproducibility import _accuracy
 popv.settings.cuml = True
 
 
-def _get_test_anndata(cl_obo_folder="resources/ontology/", prediction_mode="retrain"):
+def _get_test_anndata(cl_obo_folder="resources/ontology/", prediction_mode="retrain", ref_adata=None):
     save_folder = "tests/tmp_testing/popv_test_results/"
 
-    ref_adata_path = "resources/dataset/test/ts_lung_subset.h5ad"
-    ref_adata = sc.read(ref_adata_path)
+    if ref_adata is None:
+        ref_adata_path = "resources/dataset/test/ts_lung_subset.h5ad"
+        ref_adata = sc.read(ref_adata_path)
+        ref_layer_key = None
+    else:
+        ref_adata = ref_adata
+        ref_layer_key = "scvi_counts"
 
     query_adata_path = "resources/dataset/test/lca_subset.h5ad"
     query_adata = sc.read(query_adata_path)
@@ -31,9 +35,6 @@ def _get_test_anndata(cl_obo_folder="resources/ontology/", prediction_mode="retr
     n_samples_per_label = np.max((min_celltype_size, 20))
 
     query_batch_key = None
-
-    # Lesser used parameters
-    query_labels_key = None
     unknown_celltype_label = "unknown"
     hvg = 4000 if prediction_mode == "retrain" else None
 
@@ -41,9 +42,9 @@ def _get_test_anndata(cl_obo_folder="resources/ontology/", prediction_mode="retr
         query_adata,
         ref_adata,
         query_batch_key=query_batch_key,
-        query_labels_key=query_labels_key,
         ref_labels_key=ref_labels_key,
         ref_batch_key=ref_batch_key,
+        ref_layer_key=ref_layer_key,
         unknown_celltype_label=unknown_celltype_label,
         save_path_trained_models=save_folder,
         cl_obo_folder=cl_obo_folder,
@@ -208,9 +209,15 @@ def test_annotation():
     assert "popv_majority_vote_prediction" in adata.obs.columns
     assert not adata.obs["popv_majority_vote_prediction"].isnull().any()
 
-    adata = _get_test_anndata(prediction_mode="fast").adata
+    adata = _get_test_anndata(ref_adata=adata[adata.obs["_dataset"]=="ref"], prediction_mode="inference").adata
     popv.annotation.annotate_data(
         adata,
+        save_path="tests/tmp_testing/popv_test_results/",
+        methods_kwargs={
+            "knn_on_bbknn": {"method_kwargs": {"use_annoy": True}},
+            "knn_on_scvi": {"train_kwargs": {"max_epochs": 3}},
+            "scanvi": {"train_kwargs": {"max_epochs": 3}},
+        },
     )
 
     adata = _get_test_anndata(prediction_mode="inference").adata
@@ -223,6 +230,7 @@ def test_annotation():
             "scanvi": {"train_kwargs": {"max_epochs": 3}},
         },
     )
+
     adata = _get_test_anndata(prediction_mode="fast").adata
     popv.annotation.annotate_data(
         adata,
@@ -268,3 +276,42 @@ def test_annotation_no_ontology():
 
     assert "popv_majority_vote_prediction" in adata.obs.columns
     assert not adata.obs["popv_majority_vote_prediction"].isnull().any()
+
+
+def test_annotation_hub():
+    """Test Annotation and Plotting pipeline without ontology."""
+    adata = _get_test_anndata(cl_obo_folder=False).adata
+    output_folder = "tests/tmp_testing/popv_test_results_hub/"
+    popv.annotation.annotate_data(
+        adata, methods=["svm", "xgboost"], save_path=output_folder
+    )
+    popv.hub.create_criticism_report(
+        adata,
+        save_folder=output_folder,
+    )
+    model_json = {
+        "description": "Tabula Sapiens is a benchmark, first-draft human cell atlas of over 1.1M cells from 28 organs of 24 normal human subjects. This work is the product of the Tabula Sapiens Consortium. Taking the organs from the same individual controls for genetic background, age, environment, and epigenetic effects, and allows detailed analysis and comparison of cell types that are shared between tissues.",
+        "tissues": ["test"],
+        "cellxgene_url": "test",
+        "references": "Tabula Sapiens reveals transcription factor expression, senescence effects, and sex-specific features in cell types from 28 human organs and tissues, The Tabula Sapiens Consortium; bioRxiv, doi: https://doi.org/10.1101/2024.12.03.626516",
+        "license_info": "cc-by-4.0",
+    }
+    hmch = popv.hub.HubModelCardHelper.from_dir(
+        output_folder,
+        anndata_version=anndata.__version__,
+        **model_json
+    )
+    hm = popv.hub.HubMetadata.from_anndata(
+        adata,
+        popv_version=popv.__version__,
+        anndata_version=anndata.__version__,
+        cellxgene_url=model_json['cellxgene_url']
+    )
+    hmo = popv.hub.HubModel(output_folder, model_card=hmch, metadata=hm)
+    hmo.push_to_huggingface_hub(
+        repo_name="popV/test",
+        repo_token=None,
+        repo_create=True,
+        repo_create_kwargs={"exist_ok": True},
+    )
+    hmo.annotate_data(adata, prediction_mode="fast")

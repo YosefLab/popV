@@ -48,12 +48,12 @@ class BaseAlgorithm:
 
     @abstractmethod
     def _compute_integration(self, adata):
-        """Computes integration of adata"""
+        """Compute integration of adata."""
 
     @abstractmethod
     def _predict(self, adata):
-        """Predicts cell type of adata"""
+        """Predicts cell type of adata."""
 
     @abstractmethod
     def _compute_embedding(self, adata):
-        """Computes UMAP embedding of adata"""
+        """Compute UMAP embedding of adata."""

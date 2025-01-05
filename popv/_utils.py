@@ -8,6 +8,28 @@ from pathlib import Path
 import networkx as nx
 import numpy as np
 import pandas as pd
+from anndata import AnnData
+from scipy.sparse import csr_matrix
+
+
+def get_minified_adata(
+    adata,
+) -> AnnData:
+    """Return a minified AnnData.
+
+    Parameters
+    ----------
+    adata
+        Original AnnData, of which we want to create a minified version.
+    """
+    adata = adata.copy()
+    del adata.raw
+    all_zeros = csr_matrix(adata.X.shape)
+    X = all_zeros
+    layers = {layer: all_zeros.copy() for layer in adata.layers}
+    adata.X = X
+    adata.layers = layers
+    return adata
 
 
 def create_ontology_nlp_emb(lbl2sent, output_path):

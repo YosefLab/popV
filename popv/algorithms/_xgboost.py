@@ -4,6 +4,7 @@ import logging
 import os
 
 import numpy as np
+import pandas as pd
 import xgboost as xgb
 
 from popv import settings
@@ -55,11 +56,12 @@ class XGboost(BaseAlgorithm):
 
     def _predict(self, adata):
         logging.info(
-            f'Computing random forest classifier. Storing prediction in adata.obs["{self.result_key}"]'
+            f'Computing XGboost classifier. Storing prediction in adata.obs["{self.result_key}"]'
         )
 
-        test_x = adata.layers[self.layer_key] if self.layer_key else adata.X
-        test_y = adata.obs[self.labels_key].cat.codes.to_numpy()
+        subset = adata[adata.obs["_predict_cells"] == "relabel"]
+        test_x = subset.layers[self.layer_key] if self.layer_key else subset.X
+        test_y = subset.obs[self.labels_key].cat.codes.to_numpy()
         dtest = xgb.DMatrix(test_x, test_y)
 
         if adata.uns["_prediction_mode"] == "retrain":
@@ -80,10 +82,16 @@ class XGboost(BaseAlgorithm):
             bst.load_model(os.path.join(adata.uns["_save_path_trained_models"], "xgboost_classifier.model"))
 
         output_probabilities = bst.predict(dtest)
-        adata.obs[self.result_key] = adata.uns["label_categories"][
+        unassigned_idx = list(adata.uns["label_categories"]).index("unassigned")
+        output_probabilities[:, unassigned_idx] = 0.
+        if self.result_key not in adata.obs.columns:
+             adata.obs[self.result_key] = adata.uns["unknown_celltype_label"]
+        adata.obs.loc[adata.obs["_predict_cells"] == "relabel", self.result_key] = adata.uns["label_categories"][
             np.argmax(output_probabilities, axis=1)
         ]
         if self.return_probabilities:
-            adata.obs[f"{self.result_key}_probabilities"] = np.max(
+            if f"{self.result_key}_probabilities" not in adata.obs.columns:
+                adata.obs[f"{self.result_key}_probabilities"] = pd.Series(dtype="float64")
+            adata.obs.loc[adata.obs["_predict_cells"] == "relabel", f"{self.result_key}_probabilities"] = np.max(
                 output_probabilities, axis=1
             ).astype(float)

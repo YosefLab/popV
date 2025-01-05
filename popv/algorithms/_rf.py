@@ -2,9 +2,10 @@ from __future__ import annotations
 
 import logging
 import os
-import joblib
 
+import joblib
 import numpy as np
+import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
 
 from popv import settings
@@ -61,7 +62,7 @@ class RF(BaseAlgorithm):
             f'Computing random forest classifier. Storing prediction in adata.obs["{self.result_key}"]'
         )
 
-        test_x = adata.layers[self.layer_key] if self.layer_key else adata.X
+        test_x = adata[adata.obs["_predict_cells"] == "relabel"].layers[self.layer_key] if self.layer_key else adata.X
 
         if adata.uns["_prediction_mode"] == "retrain":
             # CUML RF doesn't support pickling, we always use sklearn RF
@@ -86,10 +87,14 @@ class RF(BaseAlgorithm):
                 open(os.path.join(adata.uns["_save_path_trained_models"], "rf_classifier.joblib"), "rb")
             )
 
-        adata.obs[self.result_key] = adata.uns["label_categories"][
+        if self.result_key not in adata.obs.columns:
+            adata.obs[self.result_key] = adata.uns["unknown_celltype_label"]
+        adata.obs.loc[adata.obs["_predict_cells"] == "relabel", self.result_key] = adata.uns["label_categories"][
             rf.predict(test_x)
         ]
         if self.return_probabilities:
-            adata.obs[f"{self.result_key}_probabilities"] = np.max(
+            if f"{self.result_key}_probabilities" not in adata.obs.columns:
+                adata.obs[f"{self.result_key}_probabilities"] = pd.Series(dtype="float64")
+            adata.obs.loc[adata.obs["_predict_cells"] == "relabel", f"{self.result_key}_probabilities"] = np.max(
                 rf.predict_proba(test_x), axis=1
             ).astype(float)

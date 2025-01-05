@@ -100,18 +100,18 @@ class SVM(BaseAlgorithm):
                 )
 
 
-        if settings.cuml and scp.issparse(test_x):
+        if self.return_probabilities:
+            required_columns = [self.result_key, f"{self.result_key}_probabilities"]
+        else:
+            required_columns = [self.result_key]
+
+        result_df = pd.DataFrame(index=adata.obs_names, columns=required_columns, dtype=float)
+        if settings.cuml:
             clf = joblib.load(
                 open(
                     os.path.join(adata.uns["_save_path_trained_models"], "svm_classifier_cuml.joblib"), "rb"
                 )
             )
-            if self.return_probabilities:
-                required_columns = [self.result_key, f"{self.result_key}_probabilities"]
-            else:
-                required_columns = [self.result_key]
-
-            result_df = pd.DataFrame(index=adata.obs_names, columns=required_columns, dtype=float)
             shard_size = int(settings.shard_size)
             for i in range(0, adata.n_obs, shard_size):
                 tmp_x = test_x[i : i + shard_size]
@@ -122,15 +122,18 @@ class SVM(BaseAlgorithm):
                     result_df.loc[names_x, f"{self.result_key}_probabilities"] = np.max(
                         clf.predict_proba(tmp_x), axis=1
                     ).astype(float)
-            adata.obs[result_df.columns] = result_df
         else:
             clf = pickle.load(
                 open(
                     os.path.join(adata.uns["_save_path_trained_models"], "svm_classifier.joblib"), "rb"
                 )
             )
-            adata.obs[self.result_key] = adata.uns["label_categories"][clf.predict(test_x)]
+            result_df[self.result_key] = adata.uns["label_categories"][clf.predict(test_x)]
             if self.return_probabilities:
-                adata.obs[f"{self.result_key}_probabilities"] = np.max(
+                result_df[f"{self.result_key}_probabilities"] = np.max(
                     clf.predict_proba(test_x), axis=1
                 )
+        for col in required_columns:
+            if col not in adata.obs.columns:
+                adata.obs[col] = pd.Series(dtype="float64") if "probabilities" in col else adata.uns["unknown_celltype_label"]
+        adata.obs.loc[adata.obs["_predict_cells"] == "relabel", result_df.columns] = result_df

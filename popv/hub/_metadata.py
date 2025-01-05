@@ -209,7 +209,6 @@ class HubModelCardHelper:
         else:
             validation_accuracies = "Not provided by uploader."
             train_accuracies = "Not provided by uploader."
-        print(validation_accuracies)
 
         # create the content from the template
         content = template.format(

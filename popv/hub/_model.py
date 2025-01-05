@@ -26,29 +26,6 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-def create_gitignore(folder_path):
-    # Define the .gitignore content
-    gitignore_content = """
-    # Ignore all .h5ad files
-    *.h5ad
-
-    # Ignore output folder
-    /popv_output/
-
-    # Ignore temporary or system files
-    *.tmp
-    .DS_Store
-    Thumbs.db
-
-    # Ignore any hidden system files
-    .*
-    """
-    # Create the .gitignore file in the specified folder
-    gitignore_path = os.path.join(folder_path, ".gitignore")
-    with open(gitignore_path, "w") as gitignore_file:
-        gitignore_file.write(gitignore_content)
-
-
 class HubModel:
     """Wrapper for :class:`~scvi.model.base.BaseModelClass` backed by HuggingFace Hub.
 
@@ -71,23 +48,26 @@ class HubModel:
     def __init__(
         self,
         local_dir: str,
-        metadata: dict | str,
+        metadata: dict | str | None = None,
         repo_name: str | None = None,
         model_card: HubModelCardHelper | ModelCard | str | None = None,
+        ontology_dir: str | None = None,
     ):
         self._local_dir = local_dir
+        self._ontology_dir = ontology_dir
         self._repo_name = repo_name
 
         self._model_path = f"{self._local_dir}"
         self._adata_path = f"{self._local_dir}/ref_adata.h5ad"
+        self._minified_adata_path = f"{self._local_dir}/minified_ref_adata.h5ad"
 
         # lazy load - these are not loaded until accessed
         self._model = None
         self._adata = None
-        self._large_training_adata = None
+        self._minfied_adata = None
 
         # get the metadata from the parameters or from the disk
-        metadata_path = f"{self._local_dir}/_required_metadata.json"
+        metadata_path = f"{self._local_dir}/metadata.json"
         if isinstance(metadata, HubMetadata):
             self._metadata = metadata
         elif isinstance(metadata, str) or os.path.isfile(metadata_path):
@@ -137,6 +117,7 @@ class HubModel:
         save_path: str = "tmp",
         prediction_mode: str = "fast",
         methods: list | None = None,
+        gene_symbols: str | None = None,
         ) -> AnnData:
         """Annotate the query data with the trained model.
 
@@ -152,44 +133,47 @@ class HubModel:
             The prediction mode to use. Either "fast" or "inference".
             "fast" will only predict on the query data,
             while "inference" will integrate query and reference data.
+        gene_symbols
+            Gene symbols given as query_adata.var_names.
 
         Returns
         -------
         AnnData
             The annotated data.
         """
-        ref_adata = self.adata if prediction_mode == "inference" else False
-        setup_dict = self.adata.uns["_setup_dict"]
+        ref_adata = self.adata if prediction_mode == "retrain" else self.minified_adata
+        setup_dict = self.metadata.setup_dict
+        if gene_symbols is not None:
+            query_adata = self.map_genes(adata=query_adata, gene_symbols=gene_symbols)
 
         concatenate_adata = Process_Query(
             query_adata,
             ref_adata,
-            query_labels_key=None,
             query_batch_key=query_batch_key,
             ref_labels_key=setup_dict["ref_labels_key"],
             ref_batch_key=setup_dict["ref_batch_key"],
             unknown_celltype_label=setup_dict["unknown_celltype_label"],
             save_path_trained_models=self._local_dir,
-            cl_obo_folder="/resources/ontology/",
+            cl_obo_folder=self.ontology_dir,
             prediction_mode=prediction_mode,
             n_samples_per_label=100,
             hvg=None,
         ).adata
-        methods_ = self.metadata['methods']
+        methods_ = self.metadata.methods
         if prediction_mode == "fast":
-            methods_ = [method for method in methods_ if method in AlgorithmsNT.FAST_METHODS]
+            methods_ = [method for method in methods_ if method in AlgorithmsNT.FAST_ALGORITHMS]
         if methods is not None:
             if not set(methods).issubset(methods_):
                 ValueError(
                     f"Method {set(methods) - set(methods_)} is not supported. Consider retraining models."
                 )
             methods_ = methods
-        method_kwargs = self.metadata['method_kwargs']
+        methods_kwargs = self.metadata.method_kwargs
         annotate_data(
             concatenate_adata,
             save_path=f"{save_path}/popv_output",
             methods=methods,
-            method_kwargs=method_kwargs
+            methods_kwargs=methods_kwargs
         )
 
         return concatenate_adata
@@ -257,6 +241,14 @@ class HubModel:
             token=repo_token,
             **kwargs,
         )
+        if os.path.isfile(f"{self._local_dir}/minified_ref_adata.h5ad"):
+            api.upload_file(
+                path_or_fileobj=f"{self._local_dir}/minified_ref_adata.h5ad",
+                path_in_repo="minified_ref_adata.h5ad",
+                repo_id=repo_name,
+                token=repo_token,
+                **kwargs,
+            )
         collection_slug = collection_slug
 
         if collection_slug is not None:
@@ -306,8 +298,13 @@ class HubModel:
             revision=revision,
             **kwargs,
         )
+        ontology_snapshot = snapshot_download(
+            repo_id="popV/ontology",
+            repo_type="dataset",
+            cache_dir=cache_dir,
+        )
         model_card = ModelCard.load(repo_name)
-        return cls(snapshot_folder, model_card=model_card, repo_name=repo_name)
+        return cls(snapshot_folder, model_card=model_card, repo_name=repo_name, ontology_dir=ontology_snapshot)
 
     def __repr__(self):
         def eval_obj(obj):
@@ -330,6 +327,11 @@ class HubModel:
         return self._local_dir
 
     @property
+    def ontology_dir(self) -> str:
+        """The local directory where the models are downloaded."""
+        return self._ontology_dir
+
+    @property
     def repo_name(self) -> str:
         """The local directory where the data and pre-trained model reside."""
         return self._repo_name
@@ -346,16 +348,40 @@ class HubModel:
 
     @property
     def adata(self) -> AnnData | None:
-        """Returns the data for this model.
+        """Returns the full training data for this model.
 
-        If the data has not been loaded yet, this will call :meth:`~scvi.hub.HubModel.read_adata`.
+        If the data has not been loaded yet, this will call :meth:`~cellxgene_census.download_source_h5ad`.
         Otherwise, it will simply return the loaded data.
         """
         if self._adata is None:
             cellxgene_census.download_source_h5ad(
-                dataset_id=self.metadata.cellxgene_link.rsplit('/', 2)[1].rsplit('.')[0],
+                dataset_id=self.metadata.cellxgene_url.rsplit('/', 2)[1].rsplit('.')[0],
                 census_version="latest",
                 to_path=self._adata_path,
             )
             self._adata = sc.read_h5ad(self._adata_path)
         return self._adata
+
+    @property
+    def minified_adata(self) -> AnnData | None:
+        """Returns the minified data for this model.
+
+        If the data has not been loaded yet, this will call :meth:`~scanpy.read_h5ad`.
+        Otherwise, it will simply return the loaded data.
+        """
+        if self._minfied_adata is None:
+            self._minfied_adata = sc.read_h5ad(self._minified_adata_path)
+        return self._minfied_adata
+
+    def map_genes(self, adata, gene_symbols) -> AnnData | None:
+        """Map genes to CELLxGENE census gene IDs."""
+        with cellxgene_census.open_soma() as census:
+            var_df = cellxgene_census.get_var(
+                census,
+                organism="homo_sapiens",
+            )
+            feature_dict = dict(zip(var_df[gene_symbols], var_df['feature_id'], strict=True))
+        adata.var['old_index'] = adata.var_names
+        adata.var_names = adata.var_names.map(feature_dict)
+        adata = adata[:, adata.var.index.notna()].copy()
+        return adata

@@ -47,7 +47,11 @@ class Config:
         logging_dir: str = "./popv_log/",
         n_jobs: int = 1,
         cuml: bool = False,
+        accelerator: str = "auto",
         shard_size: int = 100000,
+        recompute_embeddings: bool = False,
+        return_probabilities: bool = True,
+        compute_embedding: bool = True,
     ):
         """Set up Config manager for PopV."""
         self.seed = seed
@@ -55,10 +59,11 @@ class Config:
         self.verbosity = verbosity
         self.n_jobs = n_jobs
         self.cuml = cuml
+        self.accelerator = accelerator
         self.shard_size = shard_size
-        self.accelerator = "auto"
-        self.return_probabilities = True
-        self.compute_embedding = True
+        self.recompute_embeddings = recompute_embeddings
+        self.return_probabilities = return_probabilities
+        self.compute_embedding = compute_embedding
 
     @property
     def logging_dir(self) -> Path:
@@ -119,7 +124,7 @@ class Config:
     @verbosity.setter
     def verbosity(self, level: str | int):
         """
-        Sets logging configuration for popV based on chosen level of verbosity.
+        Set logging configuration for popV based on chosen level of verbosity.
 
         Parameters
         ----------
@@ -151,6 +156,15 @@ class Config:
     @accelerator.setter
     def accelerator(self, accelerator: str):
         self._accelerator = accelerator
+
+    @property
+    def recompute_embeddings(self) -> bool:
+        """Recompute UMAPs and BBKNN and Harmony."""
+        return self._recompute_embeddings
+
+    @recompute_embeddings.setter
+    def recompute_embeddings(self, recompute_embeddings: bool):
+        self._recompute_embeddings = recompute_embeddings
 
     @property
     def compute_embedding(self) -> bool:

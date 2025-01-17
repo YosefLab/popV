@@ -310,7 +310,7 @@ def test_annotation_hub(private):
         cellxgene_url=model_json["cellxgene_url"],
     )
     hmo = popv.hub.HubModel(output_folder, model_card=hmch, metadata=hm)
-    if not private:
+    if private:
         hmo.push_to_huggingface_hub(
             repo_name="popV/test",
             repo_token=None,

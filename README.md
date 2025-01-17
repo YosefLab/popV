@@ -27,35 +27,33 @@ Currently implemented algorithms are:
     [Harmony](https://github.com/lilab-bcb/harmony-pytorch)
 - Random forest classification
 - Support vector machine classification
+- XGboost classification
 - [OnClass](https://github.com/wangshenguiuc/OnClass) cell type classification
 - [scANVI](https://github.com/scverse/scvi-tools) label transfer
 - [Celltypist](https://www.celltypist.org) cell type classification
 
 All algorithms are implemented as a class in
-[popv/algorithms](../popv/algorithms/__init__.py). To implement a new method, a
-class has to have several methods:
-
-- algorithm.\_compute_integration: Computes dataset integration to yield an
-    integrated latent space.
-- algorithm.predict: Computes cell-type labels based on the specific
-    classifier.
-- algorithm.\_compute_embedding: Computes UMAP embedding of previously
-    computed integrated latent space.
+[popv/algorithms](popv/algorithms/__init__.py).
 
 New classifiers should inherit from
-[BaseAlgorithm](../popv/algorithms/_base_algorithm.py). Adding a new class with
-those methods will automatically tell PopV to include this class into its
+[BaseAlgorithm](popv/algorithms/_base_algorithm.py). Adding a new class with the
+methods defined in this class and adding it to [NTAlgorithms](popv/annotation.py)
+will tell PopV to include this class into its
 classifiers and will use the new classifier as another expert.
 
 All algorithms that allow for pre-training are pre-trained. This excludes by
 design BBKNN, Harmony and SCANORAMA as all construct a new embedding space.
+To provide pretrained methods for BBKNN and Harmony, we use a nearest-neighbor
+index in PCA space and position query cells at the average position of the 5
+nearest neighbors.
+
 Pretrained models are stored on
-[Zenodo](https://zenodo.org/record/7580707) and are automatically downloaded in
-the Colab notebook linked below. We encourage pre-training models when
-implementing new classes.
+[HuggingFace](https://huggingface.co/popV) and can be downloaded by using
+[pull_from_huggingface_hub](popv/hub.py) that returns a class and can annotate
+query data by calling the [annotate_data](popv/hub.py) method of that class.
 
 All input parameters are defined during initial call to
-[Process_Query](../popv/preprocessing.py) and are stored in the unstructured
+[Process_Query](popv/preprocessing.py) and are stored in the uns
 field of the generated AnnData object. PopV has three levels of prediction
 complexities:
 
@@ -69,7 +67,7 @@ complexities:
     embedding).
 
 A user-defined selection of classification algorithms can be defined when
-calling [annotate_data](../popv/annotation.py). Additionally, advanced users
+calling [annotate_data](popv/annotation.py). Additionally, advanced users
 can define non-standard parameters for the integration methods and classifiers.
 
 ## Output
@@ -93,14 +91,14 @@ certainties for every used classifier if `_settings.return_probabilities == True
 
 We suggest using a package manager like `conda` or `mamba` to install the
 package. OnClass files for annotation based on Tabula sapiens are deposited in
-`popv/ontology`. We use [Cell Ontology](https://obofoundry.org/ontology/cl.html)
+`popv/resources/ontology`. We use [Cell Ontology](https://obofoundry.org/ontology/cl.html)
 as an ontology throughout our experiments. PopV will automatically look for the
-ontology in this folder. If you want to provide your user-edited ontology, we
-will provide notebooks to create the Natural Language Model used in OnClass for
-this user-defined ontology.
+ontology in this folder. If you want to provide your user-edited ontology,
+`popv/add_celltypes_ontology.ipynb` demonstrates how to generate the Natural
+Language Model used in OnClass for this user-defined ontology.
 
 ```bash
-conda create -n yourenv python=3.11
+conda create -n yourenv python=3.12
 conda activate yourenv
 pip install git+https://github.com/YosefLab/popV
 ```
@@ -109,7 +107,7 @@ pip install git+https://github.com/YosefLab/popV
 
 We provide an example notebook in Google Colab:
 
-- [Tutorial demonstrating use of Tabula sapiens as a reference](../tabula_sapiens_tutorial.ipynb)
+- [Tutorial demonstrating use of Tabula sapiens as a reference](tabula_sapiens_tutorial.ipynb)
 
 This notebook will guide you through annotating a dataset based on the annotated
 [Tabula sapiens reference](https://tabula-sapiens-portal.ds.czbiohub.org) and
@@ -119,5 +117,5 @@ annotated based on a cell ontology. We strongly encourage the use of a
 common cell ontology,
 see also [Osumi-Sutherland et al](https://www.nature.com/articles/s41556-021-00787-7).
 Using a cell ontology is a requirement to run OnClass as a prediction algorithm.
-
-We allow running PopV without using a cell ontology.
+Setting ontology
+to false, will disable this step and allows running popV without using a cell ontology.

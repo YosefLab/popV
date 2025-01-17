@@ -30,9 +30,7 @@ def _ontology_accuracy(adata, pred_key, gt_key, obo_file, save_key=None):
         else:
             return "no match"
 
-    adata.obs[save_key] = adata.obs.apply(
-        lambda x: match_type(x[pred_key], x[gt_key]), axis=1
-    )
+    adata.obs[save_key] = adata.obs.apply(lambda x: match_type(x[pred_key], x[gt_key]), axis=1)
 
 
 def _fine_ontology_sibling_accuracy(adata, obo_file, pred_key, gt_key, save_key=None):
@@ -65,12 +63,7 @@ def _fine_ontology_sibling_accuracy(adata, obo_file, pred_key, gt_key, save_key=
                 score = nx.shortest_path_length(dag, source=gt_ct, target=pred_ct) - 1
                 score *= -1
             elif nx.has_path(dag_undirected, target=pred_ct, source=gt_ct):
-                score_ = (
-                    nx.shortest_path_length(
-                        dag_undirected, source=pred_ct, target=gt_ct
-                    )
-                    - 1
-                )
+                score_ = nx.shortest_path_length(dag_undirected, source=pred_ct, target=gt_ct) - 1
                 score = f"{score_}_sib"
             else:
                 score = 1000

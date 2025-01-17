@@ -14,9 +14,7 @@ from popv.reproducibility import _accuracy
 popv.settings.cuml = True
 
 
-def _get_test_anndata(
-    cl_obo_folder="resources/ontology/", prediction_mode="retrain", ref_adata=None
-):
+def _get_test_anndata(cl_obo_folder="resources/ontology/", prediction_mode="retrain", ref_adata=None):
     save_folder = "tests/tmp_testing/popv_test_results/"
 
     if ref_adata is None:
@@ -126,9 +124,7 @@ def test_harmony():
 def test_scanvi():
     """Test SCANVI algorithm."""
     adata = _get_test_anndata().adata
-    current_method = popv.algorithms.scanvi(
-        train_kwargs={"max_epochs": 2, "max_epochs_unsupervised": 1}
-    )
+    current_method = popv.algorithms.scanvi(train_kwargs={"max_epochs": 2, "max_epochs_unsupervised": 1})
 
     current_method._compute_integration(adata)
     current_method._predict(adata)
@@ -191,9 +187,7 @@ def test_annotation():
     )
     popv.visualization.agreement_score_bar_plot(adata)
     popv.visualization.prediction_score_bar_plot(adata)
-    popv.visualization.make_agreement_plots(
-        adata, prediction_keys=adata.uns["prediction_keys"], show=False
-    )
+    popv.visualization.make_agreement_plots(adata, prediction_keys=adata.uns["prediction_keys"], show=False)
     popv.visualization.celltype_ratio_bar_plot(adata)
     obo_fn = "resources/ontology/cl_popv.json"
     _accuracy._ontology_accuracy(
@@ -212,9 +206,7 @@ def test_annotation():
     assert "popv_majority_vote_prediction" in adata.obs.columns
     assert not adata.obs["popv_majority_vote_prediction"].isnull().any()
 
-    adata = _get_test_anndata(
-        ref_adata=adata[adata.obs["_dataset"] == "ref"], prediction_mode="inference"
-    ).adata
+    adata = _get_test_anndata(ref_adata=adata[adata.obs["_dataset"] == "ref"], prediction_mode="inference").adata
     popv.annotation.annotate_data(
         adata,
         save_path="tests/tmp_testing/popv_test_results/",
@@ -251,17 +243,11 @@ def test_annotation():
 def test_annotation_no_ontology():
     """Test Annotation and Plotting pipeline without ontology."""
     adata = _get_test_anndata(cl_obo_folder=False).adata
-    popv.annotation.annotate_data(
-        adata, methods=["svm", "rf"], save_path="tests/tmp_testing/popv_test_results/"
-    )
+    popv.annotation.annotate_data(adata, methods=["svm", "rf"], save_path="tests/tmp_testing/popv_test_results/")
     popv.visualization.agreement_score_bar_plot(adata)
     popv.visualization.prediction_score_bar_plot(adata)
-    popv.visualization.make_agreement_plots(
-        adata, prediction_keys=adata.uns["prediction_keys"]
-    )
-    popv.visualization.celltype_ratio_bar_plot(
-        adata, save_folder="tests/tmp_testing/popv_test_results/"
-    )
+    popv.visualization.make_agreement_plots(adata, prediction_keys=adata.uns["prediction_keys"])
+    popv.visualization.celltype_ratio_bar_plot(adata, save_folder="tests/tmp_testing/popv_test_results/")
     popv.visualization.celltype_ratio_bar_plot(adata, normalize=False)
     adata.obs["empty_columns"] = "a"
     input_data = adata.obs[["empty_columns", "popv_rf_prediction"]].values.tolist()
@@ -287,9 +273,7 @@ def test_annotation_hub():
     """Test Annotation and Plotting pipeline without ontology."""
     adata = _get_test_anndata(cl_obo_folder=False).adata
     output_folder = "tests/tmp_testing/popv_test_results_hub/"
-    popv.annotation.annotate_data(
-        adata, methods=["svm", "xgboost"], save_path=output_folder
-    )
+    popv.annotation.annotate_data(adata, methods=["svm", "xgboost"], save_path=output_folder)
     popv.hub.create_criticism_report(
         adata,
         save_folder=output_folder,
@@ -301,9 +285,7 @@ def test_annotation_hub():
         "references": "Tabula Sapiens reveals transcription factor expression, senescence effects, and sex-specific features in cell types from 28 human organs and tissues, The Tabula Sapiens Consortium; bioRxiv, doi: https://doi.org/10.1101/2024.12.03.626516",
         "license_info": "cc-by-4.0",
     }
-    hmch = popv.hub.HubModelCardHelper.from_dir(
-        output_folder, anndata_version=anndata.__version__, **model_json
-    )
+    hmch = popv.hub.HubModelCardHelper.from_dir(output_folder, anndata_version=anndata.__version__, **model_json)
     hm = popv.hub.HubMetadata.from_anndata(
         adata,
         popv_version=popv.__version__,

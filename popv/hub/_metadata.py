@@ -90,9 +90,7 @@ class HubMetadata:
             Whether to overwrite the file if it already exists.
         """
         if os.path.isfile(save_path) and not overwrite:
-            raise FileExistsError(
-                f"File already exists at {save_path}. To overwrite, pass `overwrite=True`."
-            )
+            raise FileExistsError(f"File already exists at {save_path}. To overwrite, pass `overwrite=True`.")
         with open(save_path, "w") as f:
             json.dump(asdict(self), f, indent=4)
 
@@ -204,12 +202,8 @@ class HubModelCardHelper:
         )
 
         if self.metrics_report is not None:
-            validation_accuracies = self.metrics_report.get(
-                "query_accuracy", "Not provided by uploader."
-            )
-            train_accuracies = self.metrics_report.get(
-                "ref_accuracy", "Not provided by uploader."
-            )
+            validation_accuracies = self.metrics_report.get("query_accuracy", "Not provided by uploader.")
+            train_accuracies = self.metrics_report.get("ref_accuracy", "Not provided by uploader.")
         else:
             validation_accuracies = "Not provided by uploader."
             train_accuracies = "Not provided by uploader."

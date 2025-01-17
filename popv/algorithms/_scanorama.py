@@ -76,10 +76,7 @@ class SCANORAMA(BaseAlgorithm):
     def _compute_integration(self, adata):
         logging.info("Integrating data with scanorama")
 
-        _adatas = [
-            adata[adata.obs[self.batch_key] == i]
-            for i in np.unique(adata.obs[self.batch_key])
-        ]
+        _adatas = [adata[adata.obs[self.batch_key] == i] for i in np.unique(adata.obs[self.batch_key])]
         scanorama.integrate_scanpy(_adatas, **self.method_kwargs)
         tmp_adata = anndata.concat(_adatas)
         adata.obsm["X_scanorama"] = tmp_adata[adata.obs_names].obsm["X_scanorama"]
@@ -92,12 +89,8 @@ class SCANORAMA(BaseAlgorithm):
         train_Y = adata.obs.loc[ref_idx, self.labels_key].cat.codes.to_numpy()
 
         knn = make_pipeline(
-            FAISSTransformer(
-                n_neighbors=self.classifier_dict["n_neighbors"], n_jobs=settings.n_jobs
-            ),
-            KNeighborsClassifier(
-                metric="precomputed", weights=self.classifier_dict["weights"]
-            ),
+            FAISSTransformer(n_neighbors=self.classifier_dict["n_neighbors"], n_jobs=settings.n_jobs),
+            KNeighborsClassifier(metric="precomputed", weights=self.classifier_dict["weights"]),
         )
 
         knn.fit(train_X, train_Y)
@@ -107,19 +100,15 @@ class SCANORAMA(BaseAlgorithm):
         adata.obs[self.result_key] = adata.uns["label_categories"][knn_pred]
 
         if self.return_probabilities:
-            adata.obs[f"{self.result_key}_probabilities"] = np.max(
-                knn.predict_proba(adata.obsm["X_scanorama"]), axis=1
-            )
+            adata.obs[f"{self.result_key}_probabilities"] = np.max(knn.predict_proba(adata.obsm["X_scanorama"]), axis=1)
 
     def _compute_embedding(self, adata):
         if self.compute_embedding:
-            logging.info(
-                f'Saving UMAP of scanorama results to adata.obs["{self.embedding_key}"]'
-            )
+            logging.info(f'Saving UMAP of scanorama results to adata.obs["{self.embedding_key}"]')
 
             transformer = "rapids" if settings.cuml else None
             sc.pp.neighbors(adata, use_rep="X_scanorama", transformer=transformer)
             method = "rapids" if settings.cuml else "umap"
-            adata.obsm[self.embedding_key] = sc.tl.umap(
-                adata, copy=True, method=method, **self.embedding_kwargs
-            ).obsm["X_umap"]
+            adata.obsm[self.embedding_key] = sc.tl.umap(adata, copy=True, method=method, **self.embedding_kwargs).obsm[
+                "X_umap"
+            ]

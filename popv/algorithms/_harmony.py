@@ -83,19 +83,11 @@ class HARMONY(BaseAlgorithm):
             and not settings.recompute_embeddings
         ):
             self.recompute_classifier = False
-            index = faiss.read_index(
-                os.path.join(
-                    adata.uns["_save_path_trained_models"], "faiss_index.faiss"
-                )
-            )
+            index = faiss.read_index(os.path.join(adata.uns["_save_path_trained_models"], "faiss_index.faiss"))
             query_features = adata.obsm["X_pca"][adata.obs["_dataset"] == "query", :]
             _, indices = index.search(query_features.astype(np.float32), 5)
-            neighbor_values = adata.obsm["X_pca_harmony"][
-                adata.obs["_dataset"] == "ref", :
-            ][indices].astype(np.float32)
-            adata.obsm["X_pca_harmony"][adata.obs["_dataset"] == "query", :] = np.mean(
-                neighbor_values, axis=1
-            )
+            neighbor_values = adata.obsm["X_pca_harmony"][adata.obs["_dataset"] == "ref", :][indices].astype(np.float32)
+            adata.obsm["X_pca_harmony"][adata.obs["_dataset"] == "query", :] = np.mean(neighbor_values, axis=1)
             adata.obsm["X_pca_harmony"] = adata.obsm["X_pca_harmony"].astype(np.float32)
         elif adata.uns["_prediction_mode"] != "fast":
             adata.obsm["X_pca_harmony"] = harmonize(
@@ -105,9 +97,7 @@ class HARMONY(BaseAlgorithm):
                 use_gpu=settings.accelerator == "gpu",
             )
         else:
-            raise ValueError(
-                f"Prediction mode {adata.uns['_prediction_mode']} not supported for HARMONY"
-            )
+            raise ValueError(f"Prediction mode {adata.uns['_prediction_mode']} not supported for HARMONY")
 
     def _predict(self, adata, result_key="popv_knn_on_harmony_prediction"):
         logging.info(f'Saving knn on harmony results to adata.obs["{result_key}"]')
@@ -122,15 +112,10 @@ class HARMONY(BaseAlgorithm):
                     n_neighbors=self.classifier_dict["n_neighbors"],
                     n_jobs=settings.n_jobs,
                 ),
-                KNeighborsClassifier(
-                    metric="precomputed", weights=self.classifier_dict["weights"]
-                ),
+                KNeighborsClassifier(metric="precomputed", weights=self.classifier_dict["weights"]),
             )
             knn.fit(train_X, train_Y)
-            if (
-                adata.uns["_prediction_mode"] == "retrain"
-                and adata.uns["_save_path_trained_models"]
-            ):
+            if adata.uns["_prediction_mode"] == "retrain" and adata.uns["_save_path_trained_models"]:
                 joblib.dump(
                     knn,
                     open(
@@ -153,20 +138,16 @@ class HARMONY(BaseAlgorithm):
             )
 
         # save_results
-        embedding = adata[adata.obs["_predict_cells"] == "relabel"].obsm[
-            "X_pca_harmony"
-        ]
+        embedding = adata[adata.obs["_predict_cells"] == "relabel"].obsm["X_pca_harmony"]
         knn_pred = knn.predict(embedding)
         if self.result_key not in adata.obs.columns:
             adata.obs[self.result_key] = adata.uns["unknown_celltype_label"]
-        adata.obs.loc[adata.obs["_predict_cells"] == "relabel", self.result_key] = (
-            adata.uns["label_categories"][knn_pred]
-        )
+        adata.obs.loc[adata.obs["_predict_cells"] == "relabel", self.result_key] = adata.uns["label_categories"][
+            knn_pred
+        ]
         if self.return_probabilities:
             if f"{self.result_key}_probabilities" not in adata.obs.columns:
-                adata.obs[f"{self.result_key}_probabilities"] = pd.Series(
-                    dtype="float64"
-                )
+                adata.obs[f"{self.result_key}_probabilities"] = pd.Series(dtype="float64")
             adata.obs.loc[
                 adata.obs["_predict_cells"] == "relabel",
                 f"{self.result_key}_probabilities",
@@ -174,12 +155,10 @@ class HARMONY(BaseAlgorithm):
 
     def _compute_embedding(self, adata):
         if self.compute_embedding:
-            logging.info(
-                f'Saving UMAP of harmony results to adata.obs["{self.embedding_key}"]'
-            )
+            logging.info(f'Saving UMAP of harmony results to adata.obs["{self.embedding_key}"]')
             transformer = "rapids" if settings.cuml else None
             sc.pp.neighbors(adata, use_rep="X_pca_harmony", transformer=transformer)
             method = "rapids" if settings.cuml else "umap"
-            adata.obsm[self.embedding_key] = sc.tl.umap(
-                adata, copy=True, method=method, **self.embedding_kwargs
-            ).obsm["X_umap"]
+            adata.obsm[self.embedding_key] = sc.tl.umap(adata, copy=True, method=method, **self.embedding_kwargs).obsm[
+                "X_umap"
+            ]

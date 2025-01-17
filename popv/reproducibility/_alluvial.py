@@ -38,14 +38,7 @@ class AlluvialTool:
         self.h_gap = x_range[1] * h_gap_frac
         self.v_gap_frac = v_gap_frac
         self.v_gap = (
-            sum(
-                [
-                    width
-                    for b_item_counter in self.data_dic.values()
-                    for width in b_item_counter.values()
-                ]
-            )
-            * v_gap_frac
+            sum([width for b_item_counter in self.data_dic.values() for width in b_item_counter.values()]) * v_gap_frac
         )
         self.group_widths = self.get_group_widths()
         self.item_coord_dic = self.make_item_coordinate_dic()
@@ -83,9 +76,9 @@ class AlluvialTool:
 
     def read_input_from_list(self):
         data_table = np.array(self.input)
-        assert (
-            len(set(data_table[:, 0]).intersection(set(data_table[:, 1]))) == 0
-        ), "Column a and b have intersecting elements, this is not supported."
+        assert len(set(data_table[:, 0]).intersection(set(data_table[:, 1]))) == 0, (
+            "Column a and b have intersecting elements, this is not supported."
+        )
         data_dic = defaultdict(Counter)
         for line in data_table:
             data_dic[line[0]][line[1]] += 1
@@ -119,11 +112,7 @@ class AlluvialTool:
         _ = kwargs
         b_members = (
             sorted(
-                {
-                    b_item
-                    for b_item_counter in self.data_dic.values()
-                    for b_item in b_item_counter
-                },
+                {b_item for b_item_counter in self.data_dic.values() for b_item in b_item_counter},
                 key=lambda x: self.item_widths_dic[x],
             )
             if not b_sort
@@ -140,9 +129,7 @@ class AlluvialTool:
         return a_members, b_members
 
     def get_group_widths(self):
-        return [
-            self.get_group_width(group) for group in (self.a_members, self.b_members)
-        ]
+        return [self.get_group_width(group) for group in (self.a_members, self.b_members)]
 
     def make_item_coordinate_dic(
         self,
@@ -160,10 +147,7 @@ class AlluvialTool:
         return item_coord_dic
 
     def get_group_width(self, group):
-        return (
-            sum([self.item_widths_dic[item] for item in group])
-            + (len(group) - 1) * self.v_gap
-        )
+        return sum([self.item_widths_dic[item] for item in group]) + (len(group) - 1) * self.v_gap
 
     def generate_alluvial_vein(self, a_item, b_item):
         width = self.data_dic[a_item][b_item]
@@ -238,20 +222,14 @@ class AlluvialTool:
         ax.autoscale()
         return ax
 
-    def get_color_array(
-        self, colors=None, color_side=0, rand_seed=1, cmap=None, **kwargs
-    ):
+    def get_color_array(self, colors=None, color_side=0, rand_seed=1, cmap=None, **kwargs):
         _ = kwargs
         color_items = self.b_members if color_side else self.a_members
         lci = len(color_items)
         if rand_seed is not None:
             np.random.seed(rand_seed)
         cmap = cmap if cmap is not None else matplotlib.cm.get_cmap("hsv", lci * 10**3)
-        color_array = (
-            colors
-            if colors is not None
-            else [cmap(item) for ind, item in enumerate(np.random.rand(lci))]
-        )
+        color_array = colors if colors is not None else [cmap(item) for ind, item in enumerate(np.random.rand(lci))]
         ind_dic = {item: ind for ind, item in enumerate(color_items)}
         polygon_colors = []
         for (
@@ -302,9 +280,7 @@ class AlluvialTool:
             for side, sign in enumerate((-1, 1)):
                 plt.text(
                     self.x_range[side]
-                    + sign
-                    * (label_shift + itl + int(disp_width) * (len(wdisp_sep) + wtl))
-                    * self.h_gap_frac,
+                    + sign * (label_shift + itl + int(disp_width) * (len(wdisp_sep) + wtl)) * self.h_gap_frac,
                     y,
                     labels[side],
                     # bidi.algorithm.get_display(labels[side]),  # RTL languages
@@ -315,15 +291,13 @@ class AlluvialTool:
                     rotation=90 - 180 * side,
                 )
 
-    def item_text(
-        self, item, side, disp_width=False, wdisp_sep=7 * " ", width_in=True, **kwargs
-    ):
+    def item_text(self, item, side, disp_width=False, wdisp_sep=7 * " ", width_in=True, **kwargs):
         _ = kwargs
         f_item = item
         # f_item = bidi.algorithm.get_display(item)  # for RTL languages
         tal = "<" if f_item == item else ">"
         if not disp_width:
-            ans = ("{:%s}" % tal).format(item)
+            ans = f"{item:{tal}}"
         else:
             width = self.item_coord_dic[item].get_width()
             if (side and width_in) or (not side and not width_in):
@@ -344,13 +318,7 @@ class AlluvialTool:
                     f_item,
                     width,
                 )
-            pat = "{:%s%d}%s{:%s%d}" % (
-                lc,
-                wl,
-                wdisp_sep,
-                rc,
-                wr,
-            )
+            pat = f"{lc:{wl}d}{wdisp_sep}{rc:{wr}d}"
             ans = pat.format(
                 tl,
                 tr,

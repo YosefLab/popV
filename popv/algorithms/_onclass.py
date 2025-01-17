@@ -57,12 +57,8 @@ class ONCLASS(BaseAlgorithm):
         pass
 
     def _predict(self, adata):
-        logging.info(
-            f'Computing Onclass. Storing prediction in adata.obs["{self.result_key}"]'
-        )
-        adata.obs.loc[adata.obs["_dataset"] == "query", "self.labels_key"] = adata.uns[
-            "unknown_celltype_label"
-        ]
+        logging.info(f'Computing Onclass. Storing prediction in adata.obs["{self.result_key}"]')
+        adata.obs.loc[adata.obs["_dataset"] == "query", "self.labels_key"] = adata.uns["unknown_celltype_label"]
 
         train_idx = adata.obs["_ref_subsample"]
 
@@ -75,9 +71,7 @@ class ONCLASS(BaseAlgorithm):
 
         cl_ontology_file = adata.uns["_cl_ontology_file"]
         nlp_emb_file = adata.uns["_nlp_emb_file"]
-        train_model = OnClassModel(
-            cell_type_nlp_emb_file=nlp_emb_file, cell_type_network_file=cl_ontology_file
-        )
+        train_model = OnClassModel(cell_type_nlp_emb_file=nlp_emb_file, cell_type_network_file=cl_ontology_file)
 
         if adata.uns["_save_path_trained_models"] is not None:
             model_path = os.path.join(adata.uns["_save_path_trained_models"], "OnClass")
@@ -117,12 +111,8 @@ class ONCLASS(BaseAlgorithm):
             required_columns = {
                 self.seen_result_key: pd.Series(index=subset.obs_names, dtype=str),
                 self.result_key: pd.Series(index=subset.obs_names, dtype=str),
-                f"{self.result_key}_probabilities": pd.Series(
-                    index=subset.obs_names, dtype=float
-                ),
-                f"{self.seen_result_key}_probabilities": pd.Series(
-                    index=subset.obs_names, dtype=float
-                ),
+                f"{self.result_key}_probabilities": pd.Series(index=subset.obs_names, dtype=float),
+                f"{self.seen_result_key}_probabilities": pd.Series(index=subset.obs_names, dtype=float),
             }
         else:
             required_columns = {
@@ -156,12 +146,8 @@ class ONCLASS(BaseAlgorithm):
                 result_df.loc[names_x, self.result_key] = pred_label_str
                 result_df.loc[names_x, self.seen_result_key] = pred_label_str
                 if self.return_probabilities:
-                    result_df.loc[names_x, f"{self.result_key}_probabilities"] = np.max(
-                        onclass_pred, axis=1
-                    )
-                    result_df.loc[names_x, f"{self.seen_result_key}_probabilities"] = (
-                        np.max(onclass_pred, axis=1)
-                    )
+                    result_df.loc[names_x, f"{self.result_key}_probabilities"] = np.max(onclass_pred, axis=1)
+                    result_df.loc[names_x, f"{self.seen_result_key}_probabilities"] = np.max(onclass_pred, axis=1)
             else:
                 onclass_pred = train_model.Predict(
                     corr_test_feature,
@@ -180,9 +166,7 @@ class ONCLASS(BaseAlgorithm):
                     result_df.loc[names_x, f"{self.result_key}_probabilities"] = np.max(
                         onclass_pred[1], axis=1
                     ) / onclass_pred[1].sum(1)
-                    result_df.loc[names_x, f"{self.seen_result_key}_probabilities"] = (
-                        np.max(onclass_pred[0], axis=1)
-                    )
+                    result_df.loc[names_x, f"{self.seen_result_key}_probabilities"] = np.max(onclass_pred[0], axis=1)
         for col in required_columns.keys():
             if col not in adata.obs.columns:
                 if "probabilities" in col:
@@ -190,9 +174,7 @@ class ONCLASS(BaseAlgorithm):
                 else:
                     adata.obs[col] = adata.uns["unknown_celltype_label"]
                     adata.obs[col] = adata.obs[col].astype(str)  # Set dtype to string
-        adata.obs.loc[adata.obs["_predict_cells"] == "relabel", result_df.columns] = (
-            result_df
-        )
+        adata.obs.loc[adata.obs["_predict_cells"] == "relabel", result_df.columns] = result_df
 
     def _compute_embedding(self, adata):
         return None

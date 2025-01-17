@@ -147,42 +147,19 @@ git_ref = None
 try:
     git_ref = git("name-rev", "--name-only", "--no-undefined", "HEAD")
     git_ref = re.sub(r"^(remotes/[^/]+|tags)/", "", git_ref)
-except Exception:
+except Exception:  # noqa: BLE001
     pass
 
 # (if no name found or relative ref, use commit hash instead)
 if not git_ref or re.search(r"[\^~]", git_ref):
     try:
         git_ref = git("rev-parse", "HEAD")
-    except Exception:
+    except Exception:  # noqa: BLE001
         git_ref = "main"
 
 # https://github.com/DisnakeDev/disnake/blob/7853da70b13fcd2978c39c0b7efa59b34d298186/docs/conf.py#L192
-github_repo = f"https://github.com/{html_context["github_user"]}/{project_name}"
+github_repo = f"https://github.com/{html_context['github_user']}/{project_name}"
 _project_module_path = os.path.dirname(importlib.util.find_spec(package_name).origin)  # type: ignore
-
-
-def linkcode_resolve(domain, info):
-    """Resolve links for the linkcode extension."""
-    if domain != "py":
-        return None
-
-    try:
-        obj: Any = sys.modules[info["module"]]
-        for part in info["fullname"].split("."):
-            obj = getattr(obj, part)
-        obj = inspect.unwrap(obj)
-
-        if isinstance(obj, property):
-            obj = inspect.unwrap(obj.fget)  # type: ignore
-
-        path = os.path.relpath(inspect.getsourcefile(obj), start=_project_module_path)  # type: ignore
-        src, lineno = inspect.getsourcelines(obj)
-    except Exception:
-        return None
-
-    path = f"{path}#L{lineno}-L{lineno + len(src) - 1}"
-    return f"{github_repo}/blob/{git_ref}/src/{package_name}/{path}"
 
 
 # -- Options for HTML output -------------------------------------------------

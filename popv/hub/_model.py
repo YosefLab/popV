@@ -101,9 +101,7 @@ class HubModel:
         """
         card_path = os.path.join(self._local_dir, "README.md")
         if os.path.isfile(card_path) and not overwrite:
-            raise FileExistsError(
-                f"Model card already exists at {card_path}. To overwrite, pass `overwrite=True`."
-            )
+            raise FileExistsError(f"Model card already exists at {card_path}. To overwrite, pass `overwrite=True`.")
         self.model_card.save(card_path)
 
         metadata_path = os.path.join(self._local_dir, "_required_metadata.json")
@@ -161,14 +159,10 @@ class HubModel:
         ).adata
         methods_ = self.metadata.methods
         if prediction_mode == "fast":
-            methods_ = [
-                method for method in methods_ if method in AlgorithmsNT.FAST_ALGORITHMS
-            ]
+            methods_ = [method for method in methods_ if method in AlgorithmsNT.FAST_ALGORITHMS]
         if methods is not None:
             if not set(methods).issubset(methods_):
-                ValueError(
-                    f"Method {set(methods) - set(methods_)} is not supported. Consider retraining models."
-                )
+                ValueError(f"Method {set(methods) - set(methods_)} is not supported. Consider retraining models.")
             methods_ = methods
         methods_kwargs = self.metadata.method_kwargs
         annotate_data(
@@ -386,9 +380,7 @@ class HubModel:
                 census,
                 organism="homo_sapiens",
             )
-            feature_dict = dict(
-                zip(var_df[gene_symbols], var_df["feature_id"], strict=True)
-            )
+            feature_dict = dict(zip(var_df[gene_symbols], var_df["feature_id"], strict=True))
         adata.var["old_index"] = adata.var_names
         adata.var_names = adata.var_names.map(feature_dict)
         adata = adata[:, adata.var.index.notna()].copy()

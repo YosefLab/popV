@@ -12,11 +12,7 @@ def _dataframe_to_markdown(df):
         (
             "Consensus Prediction"
             if col == "popv_prediction"
-            else (
-                col[4:-11].replace("_", " ").capitalize()
-                if col.startswith("popv")
-                else col
-            )
+            else (col[4:-11].replace("_", " ").capitalize() if col.startswith("popv") else col)
         )
         for col in df.columns
     ]
@@ -26,13 +22,7 @@ def _dataframe_to_markdown(df):
     # Format values and create rows, including the index
     rows = "\n".join(
         "| "
-        + " | ".join(
-            [str(index)]
-            + [
-                f"{value:.2f}" if not isinstance(value, int) else f"{value}"
-                for value in row
-            ]
-        )
+        + " | ".join([str(index)] + [f"{value:.2f}" if not isinstance(value, int) else f"{value}" for value in row])
         + " |"
         for index, row in zip(df.index, df.values, strict=True)
     )
@@ -83,12 +73,8 @@ def create_criticism_report(
 
     # Compute F1 scores
     labels = adata.obs[label_key].value_counts().index
-    f1_scores_per_label_query = compute_f1_scores_per_label(
-        query_annotations, label_key, labels, predictions
-    )
-    f1_scores_per_label_ref = compute_f1_scores_per_label(
-        ref_annotations, label_key, labels, predictions
-    )
+    f1_scores_per_label_query = compute_f1_scores_per_label(query_annotations, label_key, labels, predictions)
+    f1_scores_per_label_ref = compute_f1_scores_per_label(ref_annotations, label_key, labels, predictions)
     md_query_accuracy = _dataframe_to_markdown(f1_scores_per_label_query)
     md_ref_accuracy = _dataframe_to_markdown(f1_scores_per_label_ref)
 

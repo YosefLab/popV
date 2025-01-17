@@ -47,7 +47,10 @@ def _fine_ontology_sibling_accuracy(adata, obo_file, pred_key, gt_key, save_key=
     ontology_distance_dict = {}
 
     for name, pred_ct, gt_ct in zip(
-        adata.obs_names, adata.obs[pred_key], adata.obs[gt_key], strict=True,
+        adata.obs_names,
+        adata.obs[pred_key],
+        adata.obs[gt_key],
+        strict=True,
     ):
         score = None
         combination = f"{pred_ct}_{gt_ct}"
@@ -62,9 +65,12 @@ def _fine_ontology_sibling_accuracy(adata, obo_file, pred_key, gt_key, save_key=
                 score = nx.shortest_path_length(dag, source=gt_ct, target=pred_ct) - 1
                 score *= -1
             elif nx.has_path(dag_undirected, target=pred_ct, source=gt_ct):
-                score_ = nx.shortest_path_length(
-                    dag_undirected, source=pred_ct, target=gt_ct
-                ) - 1
+                score_ = (
+                    nx.shortest_path_length(
+                        dag_undirected, source=pred_ct, target=gt_ct
+                    )
+                    - 1
+                )
                 score = f"{score_}_sib"
             else:
                 score = 1000

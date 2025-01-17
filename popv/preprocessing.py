@@ -82,7 +82,7 @@ class Process_Query:
         relabel_reference_cells: bool = False,
         hvg: int | None = 4000,
     ) -> None:
-        if ref_adata.X.sum()==0: # Minified object
+        if ref_adata.X.sum() == 0:  # Minified object
             if prediction_mode == "retrain":
                 ValueError(
                     "Reference dataset needs to contain gene expression to retrain models."
@@ -137,19 +137,20 @@ class Process_Query:
 
         self.prediction_mode = prediction_mode
         json_path = os.path.join(save_path_trained_models, "preprocessing.json")
-        if prediction_mode!="retrain" and not os.path.exists(json_path):
+        if prediction_mode != "retrain" and not os.path.exists(json_path):
             raise ValueError(
                 f"Configuration {json_path} doesn't exist. Set mode='retrain' to reprocess."
             )
-        if prediction_mode!="retrain":
+        if prediction_mode != "retrain":
             with open(json_path) as f:
                 data = json.load(f)
             from scvi.model.base._archesmixin import _pad_and_sort_query_anndata
+
             if not set(data["gene_names"]).issubset(set(query_adata.var_names)):
                 _pad_and_sort_query_anndata(
                     query_adata,
                     reference_var_names=pd.Index(data["gene_names"]),
-                    inplace=True
+                    inplace=True,
                 )
             self.label_categories = data["label_categories"]
             self.genes = data["gene_names"]
@@ -159,12 +160,16 @@ class Process_Query:
 
         if self.pretrained_scvi_path or self.prediction_mode != "retrain":
             if self.pretrained_scvi_path is None:
-                self.pretrained_scvi_path = os.path.join(self.save_path_trained_models, "scvi")
+                self.pretrained_scvi_path = os.path.join(
+                    self.save_path_trained_models, "scvi"
+                )
             pretrained_scvi_genes = torch.load(
                 os.path.join(self.pretrained_scvi_path, "model.pt"),
                 map_location="cpu",
             )["var_names"]
-            if self.genes is not None and not np.array_equal(pretrained_scvi_genes, self.genes):
+            if self.genes is not None and not np.array_equal(
+                pretrained_scvi_genes, self.genes
+            ):
                 warnings.warn(
                     "Pretrained scVI model and query dataset contain different genes. Retrain models or disable scVI.",
                     UserWarning,
@@ -223,12 +228,12 @@ class Process_Query:
                         subset=False,
                         flavor="seurat_v3",
                         inplace=False,
-                        #batch_key=ref_batch_key,
+                        # batch_key=ref_batch_key,
                         span=1.0,
                     )["highly_variable"]
-                    self.genes = list(ref_adata[:, subset_genes].var_names[
-                        highly_variable_genes
-                    ])
+                    self.genes = list(
+                        ref_adata[:, subset_genes].var_names[highly_variable_genes]
+                    )
                 else:
                     self.genes = list(subset_genes)
             else:
@@ -281,7 +286,7 @@ class Process_Query:
         del adata.layers
         adata = adata[:, self.genes].copy()
 
-        zero_cell_names = adata[np.array(adata.X.sum(1)<30).flatten()].obs_names
+        zero_cell_names = adata[np.array(adata.X.sum(1) < 30).flatten()].obs_names
         adata.uns["Filtered_cells"] = list(zero_cell_names)
         sc.pp.filter_cells(adata, min_counts=30, inplace=True)
         if len(zero_cell_names) > 0:
@@ -300,7 +305,9 @@ class Process_Query:
         sc.pp.normalize_total(adata, target_sum=1e4)
         sc.pp.log1p(adata)
 
-        adata.obs["_reference_labels_annotation"] = adata.obs.get(self.ref_labels_key, None)
+        adata.obs["_reference_labels_annotation"] = adata.obs.get(
+            self.ref_labels_key, None
+        )
 
         # subsample the reference cells used for training certain models
         if key == "reference":
@@ -322,7 +329,9 @@ class Process_Query:
             reference_features = adata.obsm["X_pca"]
             index = faiss.IndexFlatL2(reference_features.shape[1])
             index.add(reference_features.astype(np.float32))
-            faiss.write_index(index, os.path.join(self.save_path_trained_models, "faiss_index.faiss"))
+            faiss.write_index(
+                index, os.path.join(self.save_path_trained_models, "faiss_index.faiss")
+            )
         else:
             adata.obs["_labels_annotation"] = self.unknown_celltype_label
             adata.obs["_ref_subsample"] = False
@@ -339,7 +348,9 @@ class Process_Query:
         if self.prediction_mode == "fast":
             self.adata = self.query_adata
         else:
-            obsm_dtype = {key: value.dtype for key, value in self.ref_adata.obsm.items()}
+            obsm_dtype = {
+                key: value.dtype for key, value in self.ref_adata.obsm.items()
+            }
             self.adata = anndata.concat(
                 (self.ref_adata, self.query_adata),
                 axis=0,
@@ -351,13 +362,17 @@ class Process_Query:
                 uns_merge="first",
             )
             self.adata.obsm = {
-                key: pd.DataFrame(value).apply(pd.to_numeric, errors='coerce').astype(obsm_dtype[key]).to_numpy()
+                key: pd.DataFrame(value)
+                .apply(pd.to_numeric, errors="coerce")
+                .astype(obsm_dtype[key])
+                .to_numpy()
                 for key, value in self.adata.obsm.items()
                 if key in obsm_dtype
             }
         del self.query_adata, self.ref_adata
-        self.adata.obs["_labels_annotation"] = self.adata.obs["_labels_annotation"].fillna(
-            self.unknown_celltype_label)
+        self.adata.obs["_labels_annotation"] = self.adata.obs[
+            "_labels_annotation"
+        ].fillna(self.unknown_celltype_label)
         self.adata.obs["_labelled_train_indices"] = np.logical_and(
             self.adata.obs["_dataset"] == "ref",
             self.adata.obs["_labels_annotation"] != self.unknown_celltype_label,
@@ -366,7 +381,9 @@ class Process_Query:
             self.adata.obs["_predict_cells"] = "relabel"
         else:
             self.adata.obs["_predict_cells"] = "reference"
-            self.adata.obs.loc[self.adata.obs["_dataset"]=="query", "_predict_cells"] = "relabel"
+            self.adata.obs.loc[
+                self.adata.obs["_dataset"] == "query", "_predict_cells"
+            ] = "relabel"
 
         batch_count = self.adata.obs["_batch_annotation"].value_counts()
         if batch_count.min() < 8:
@@ -374,7 +391,9 @@ class Process_Query:
                 f"Batch size of {batch_count.min()} is small. This will lead to issues when using BBKNN. Removing small batches."
             )
             valid_batches = batch_count[batch_count >= 8].index
-            self.adata = self.adata[self.adata.obs["_batch_annotation"].isin(valid_batches)].copy()
+            self.adata = self.adata[
+                self.adata.obs["_batch_annotation"].isin(valid_batches)
+            ].copy()
 
         self.adata.obs["_labels_annotation"] = self.adata.obs[
             "_labels_annotation"
@@ -382,7 +401,9 @@ class Process_Query:
         # Store values as default for current popv in adata
         self.adata.uns["unknown_celltype_label"] = self.unknown_celltype_label
         if self.prediction_mode == "retrain":
-            self.label_categories = list(self.adata.obs["_labels_annotation"].cat.categories)
+            self.label_categories = list(
+                self.adata.obs["_labels_annotation"].cat.categories
+            )
         self.adata.uns["label_categories"] = np.array(self.label_categories)
         self.adata.uns["_pretrained_scvi_path"] = self.pretrained_scvi_path
         self.adata.uns["_save_path_trained_models"] = self.save_path_trained_models
@@ -404,5 +425,7 @@ class Process_Query:
                 "label_categories": self.label_categories,
             }
 
-            with open(os.path.join(self.save_path_trained_models, "preprocessing.json"), "w") as f:
+            with open(
+                os.path.join(self.save_path_trained_models, "preprocessing.json"), "w"
+            ) as f:
                 json.dump(data, f, indent=4)

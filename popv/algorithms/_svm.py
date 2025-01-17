@@ -7,7 +7,6 @@ import pickle
 import joblib
 import numpy as np
 import pandas as pd
-import scipy.sparse as scp
 from sklearn import svm
 from sklearn.calibration import CalibratedClassifierCV
 
@@ -83,7 +82,10 @@ class SVM(BaseAlgorithm):
                 joblib.dump(
                     clf,
                     open(
-                        os.path.join(adata.uns["_save_path_trained_models"], "svm_classifier_cuml.joblib"),
+                        os.path.join(
+                            adata.uns["_save_path_trained_models"],
+                            "svm_classifier_cuml.joblib",
+                        ),
                         "wb",
                     ),
                 )
@@ -94,22 +96,30 @@ class SVM(BaseAlgorithm):
                 joblib.dump(
                     clf,
                     open(
-                        os.path.join(adata.uns["_save_path_trained_models"], "svm_classifier.joblib"),
+                        os.path.join(
+                            adata.uns["_save_path_trained_models"],
+                            "svm_classifier.joblib",
+                        ),
                         "wb",
                     ),
                 )
-
 
         if self.return_probabilities:
             required_columns = [self.result_key, f"{self.result_key}_probabilities"]
         else:
             required_columns = [self.result_key]
 
-        result_df = pd.DataFrame(index=adata.obs_names, columns=required_columns, dtype=float)
+        result_df = pd.DataFrame(
+            index=adata.obs_names, columns=required_columns, dtype=float
+        )
         if settings.cuml:
             clf = joblib.load(
                 open(
-                    os.path.join(adata.uns["_save_path_trained_models"], "svm_classifier_cuml.joblib"), "rb"
+                    os.path.join(
+                        adata.uns["_save_path_trained_models"],
+                        "svm_classifier_cuml.joblib",
+                    ),
+                    "rb",
                 )
             )
             shard_size = int(settings.shard_size)
@@ -117,7 +127,9 @@ class SVM(BaseAlgorithm):
                 tmp_x = test_x[i : i + shard_size]
                 names_x = adata.obs_names[i : i + shard_size]
                 tmp_x = tmp_x.todense()
-                result_df.loc[names_x, self.result_key] = adata.uns["label_categories"][clf.predict(tmp_x).astype(int)]
+                result_df.loc[names_x, self.result_key] = adata.uns["label_categories"][
+                    clf.predict(tmp_x).astype(int)
+                ]
                 if self.return_probabilities:
                     result_df.loc[names_x, f"{self.result_key}_probabilities"] = np.max(
                         clf.predict_proba(tmp_x), axis=1
@@ -125,15 +137,26 @@ class SVM(BaseAlgorithm):
         else:
             clf = pickle.load(
                 open(
-                    os.path.join(adata.uns["_save_path_trained_models"], "svm_classifier.joblib"), "rb"
+                    os.path.join(
+                        adata.uns["_save_path_trained_models"], "svm_classifier.joblib"
+                    ),
+                    "rb",
                 )
             )
-            result_df[self.result_key] = adata.uns["label_categories"][clf.predict(test_x)]
+            result_df[self.result_key] = adata.uns["label_categories"][
+                clf.predict(test_x)
+            ]
             if self.return_probabilities:
                 result_df[f"{self.result_key}_probabilities"] = np.max(
                     clf.predict_proba(test_x), axis=1
                 )
         for col in required_columns:
             if col not in adata.obs.columns:
-                adata.obs[col] = pd.Series(dtype="float64") if "probabilities" in col else adata.uns["unknown_celltype_label"]
-        adata.obs.loc[adata.obs["_predict_cells"] == "relabel", result_df.columns] = result_df
+                adata.obs[col] = (
+                    pd.Series(dtype="float64")
+                    if "probabilities" in col
+                    else adata.uns["unknown_celltype_label"]
+                )
+        adata.obs.loc[adata.obs["_predict_cells"] == "relabel", result_df.columns] = (
+            result_df
+        )

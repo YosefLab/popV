@@ -75,28 +75,50 @@ class BBKNN(BaseAlgorithm):
 
     def _compute_integration(self, adata):
         logging.info("Integrating data with bbknn")
-        if False: # adata.uns["_prediction_mode"] == "inference" and "X_umap_bbknn" in adata.obsm and not settings.recompute_embeddings:
-            index = faiss.read_index(os.path.join(adata.uns["_save_path_trained_models"], "faiss_index.faiss"))
+        if (
+            False
+        ):  # adata.uns["_prediction_mode"] == "inference" and "X_umap_bbknn" in adata.obsm and not settings.recompute_embeddings:
+            index = faiss.read_index(
+                os.path.join(
+                    adata.uns["_save_path_trained_models"], "faiss_index.faiss"
+                )
+            )
             query_features = adata.obsm["X_pca"][adata.obs["_dataset"] == "query", :]
             _, indices = index.search(query_features.astype(np.float32), 5)
 
-            neighbor_embedding = adata.obsm["X_umap_bbknn"][adata.obs["_dataset"] == "ref", :][indices].astype(np.float32)
-            adata.obsm["X_umap_bbknn"][adata.obs["_dataset"] == "query", :] = np.mean(neighbor_embedding, axis=1)
+            neighbor_embedding = adata.obsm["X_umap_bbknn"][
+                adata.obs["_dataset"] == "ref", :
+            ][indices].astype(np.float32)
+            adata.obsm["X_umap_bbknn"][adata.obs["_dataset"] == "query", :] = np.mean(
+                neighbor_embedding, axis=1
+            )
             adata.obsm["X_umap_bbknn"] = adata.obsm["X_umap_bbknn"].astype(np.float32)
 
-            neighbor_probabilities = adata.obs[f"{self.result_key}_probabilities"][adata.obs["_dataset"] == "ref", :][indices].astype(np.float32)
-            adata.obs.loc[adata.obs["_dataset"] == "query", f"{self.result_key}_probabilities"] = np.mean(neighbor_probabilities, axis=1)
+            neighbor_probabilities = adata.obs[f"{self.result_key}_probabilities"][
+                adata.obs["_dataset"] == "ref", :
+            ][indices].astype(np.float32)
+            adata.obs.loc[
+                adata.obs["_dataset"] == "query", f"{self.result_key}_probabilities"
+            ] = np.mean(neighbor_probabilities, axis=1)
 
-            neighbor_prediction = adata.obs[f"{self.result_key}"][adata.obs["_dataset"] == "ref", :][indices].astype(np.float32)
-            adata.obs.loc[adata.obs["_dataset"] == "query", f"{self.result_key}"] = mode(neighbor_prediction, axis=1)
+            neighbor_prediction = adata.obs[f"{self.result_key}"][
+                adata.obs["_dataset"] == "ref", :
+            ][indices].astype(np.float32)
+            adata.obs.loc[adata.obs["_dataset"] == "query", f"{self.result_key}"] = (
+                mode(neighbor_prediction, axis=1)
+            )
         else:
             if len(adata.obs[self.batch_key].unique()) > 100:
                 logging.warning(
                     "Using PyNNDescent instead of FAISS as high number of batches leads to OOM."
                 )
-                sc.external.pp.bbknn(adata, batch_key=self.batch_key, use_faiss=False, use_rep="X_pca")
+                sc.external.pp.bbknn(
+                    adata, batch_key=self.batch_key, use_faiss=False, use_rep="X_pca"
+                )
             else:
-                sc.external.pp.bbknn(adata, batch_key=self.batch_key, use_faiss=True, use_rep="X_pca")
+                sc.external.pp.bbknn(
+                    adata, batch_key=self.batch_key, use_faiss=True, use_rep="X_pca"
+                )
 
     def _predict(self, adata):
         logging.info(f'Saving knn on bbknn results to adata.obs["{self.result_key}"]')
@@ -123,7 +145,7 @@ class BBKNN(BaseAlgorithm):
 
         knn = KNeighborsClassifier(metric="precomputed", **self.classifier_kwargs)
         knn.fit(train_distances, y=train_y)
-        adata.obs[self.result_key] = adata.uns['label_categories'][
+        adata.obs[self.result_key] = adata.uns["label_categories"][
             knn.predict(test_distances)
         ]
 

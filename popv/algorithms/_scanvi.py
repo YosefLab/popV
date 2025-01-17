@@ -103,7 +103,8 @@ class SCANVI_POPV(BaseAlgorithm):
         if adata.uns["_prediction_mode"] == "retrain":
             if adata.uns["_pretrained_scvi_path"]:
                 scvi_model = scvi.model.SCVI.load(
-                    os.path.join(adata.uns["_save_path_trained_models"], "scvi"), adata=adata
+                    os.path.join(adata.uns["_save_path_trained_models"], "scvi"),
+                    adata=adata,
                 )
             else:
                 scvi.model.SCVI.setup_anndata(
@@ -149,13 +150,22 @@ class SCANVI_POPV(BaseAlgorithm):
 
         if self.result_key not in adata.obs.columns:
             adata.obs[self.result_key] = adata.uns["unknown_celltype_label"]
-        adata.obs.loc[adata.obs["_predict_cells"] == "relabel", self.result_key] = self.model.predict(
-            adata[adata.obs["_predict_cells"] == "relabel"])
+        adata.obs.loc[adata.obs["_predict_cells"] == "relabel", self.result_key] = (
+            self.model.predict(adata[adata.obs["_predict_cells"] == "relabel"])
+        )
         if self.return_probabilities:
             if f"{self.result_key}_probabilities" not in adata.obs.columns:
-                adata.obs[f"{self.result_key}_probabilities"] = pd.Series(dtype="float64")
-            adata.obs.loc[adata.obs["_predict_cells"] == "relabel", f"{self.result_key}_probabilities"] = np.max(
-                self.model.predict(adata[adata.obs["_predict_cells"] == "relabel"], soft=True), axis=1
+                adata.obs[f"{self.result_key}_probabilities"] = pd.Series(
+                    dtype="float64"
+                )
+            adata.obs.loc[
+                adata.obs["_predict_cells"] == "relabel",
+                f"{self.result_key}_probabilities",
+            ] = np.max(
+                self.model.predict(
+                    adata[adata.obs["_predict_cells"] == "relabel"], soft=True
+                ),
+                axis=1,
             )
 
     def _compute_embedding(self, adata):
@@ -168,7 +178,9 @@ class SCANVI_POPV(BaseAlgorithm):
             relabel_indices = adata.obs["_predict_cells"] == "relabel"
             if "X_scanvi" not in adata.obsm:
                 # Initialize X_scanvi with the correct shape if it doesn't exist
-                adata.obsm["X_scanvi"] = np.zeros((adata.n_obs, latent_representation.shape[1]))
+                adata.obsm["X_scanvi"] = np.zeros(
+                    (adata.n_obs, latent_representation.shape[1])
+                )
             adata.obsm["X_scanvi"][relabel_indices, :] = latent_representation
             transformer = "rapids" if settings.cuml else None
             sc.pp.neighbors(adata, use_rep="X_scanvi", transformer=transformer)

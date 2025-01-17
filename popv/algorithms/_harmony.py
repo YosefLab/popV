@@ -77,13 +77,25 @@ class HARMONY(BaseAlgorithm):
 
     def _compute_integration(self, adata):
         logging.info("Integrating data with harmony")
-        if adata.uns["_prediction_mode"] == "inference" and "X_pca_harmony" in adata.obsm and not settings.recompute_embeddings:
+        if (
+            adata.uns["_prediction_mode"] == "inference"
+            and "X_pca_harmony" in adata.obsm
+            and not settings.recompute_embeddings
+        ):
             self.recompute_classifier = False
-            index = faiss.read_index(os.path.join(adata.uns["_save_path_trained_models"], "faiss_index.faiss"))
+            index = faiss.read_index(
+                os.path.join(
+                    adata.uns["_save_path_trained_models"], "faiss_index.faiss"
+                )
+            )
             query_features = adata.obsm["X_pca"][adata.obs["_dataset"] == "query", :]
             _, indices = index.search(query_features.astype(np.float32), 5)
-            neighbor_values = adata.obsm["X_pca_harmony"][adata.obs["_dataset"] == "ref", :][indices].astype(np.float32)
-            adata.obsm["X_pca_harmony"][adata.obs["_dataset"] == "query", :] = np.mean(neighbor_values, axis=1)
+            neighbor_values = adata.obsm["X_pca_harmony"][
+                adata.obs["_dataset"] == "ref", :
+            ][indices].astype(np.float32)
+            adata.obsm["X_pca_harmony"][adata.obs["_dataset"] == "query", :] = np.mean(
+                neighbor_values, axis=1
+            )
             adata.obsm["X_pca_harmony"] = adata.obsm["X_pca_harmony"].astype(np.float32)
         elif adata.uns["_prediction_mode"] != "fast":
             adata.obsm["X_pca_harmony"] = harmonize(
@@ -108,41 +120,57 @@ class HARMONY(BaseAlgorithm):
             knn = make_pipeline(
                 FAISSTransformer(
                     n_neighbors=self.classifier_dict["n_neighbors"],
-                    n_jobs=settings.n_jobs
+                    n_jobs=settings.n_jobs,
                 ),
                 KNeighborsClassifier(
                     metric="precomputed", weights=self.classifier_dict["weights"]
                 ),
             )
             knn.fit(train_X, train_Y)
-            if adata.uns["_prediction_mode"] == "retrain" and adata.uns["_save_path_trained_models"]:
+            if (
+                adata.uns["_prediction_mode"] == "retrain"
+                and adata.uns["_save_path_trained_models"]
+            ):
                 joblib.dump(
                     knn,
                     open(
-                        os.path.join(adata.uns["_save_path_trained_models"], "harmony_knn_classifier.joblib"),
+                        os.path.join(
+                            adata.uns["_save_path_trained_models"],
+                            "harmony_knn_classifier.joblib",
+                        ),
                         "wb",
                     ),
                 )
         else:
             knn = joblib.load(
                 open(
-                    os.path.join(adata.uns["_save_path_trained_models"], "harmony_knn_classifier.joblib"),
+                    os.path.join(
+                        adata.uns["_save_path_trained_models"],
+                        "harmony_knn_classifier.joblib",
+                    ),
                     "rb",
                 )
             )
 
         # save_results
-        embedding = adata[adata.obs["_predict_cells"] == "relabel"].obsm["X_pca_harmony"]
+        embedding = adata[adata.obs["_predict_cells"] == "relabel"].obsm[
+            "X_pca_harmony"
+        ]
         knn_pred = knn.predict(embedding)
         if self.result_key not in adata.obs.columns:
             adata.obs[self.result_key] = adata.uns["unknown_celltype_label"]
-        adata.obs.loc[adata.obs["_predict_cells"] == "relabel", self.result_key] = adata.uns["label_categories"][knn_pred]
+        adata.obs.loc[adata.obs["_predict_cells"] == "relabel", self.result_key] = (
+            adata.uns["label_categories"][knn_pred]
+        )
         if self.return_probabilities:
             if f"{self.result_key}_probabilities" not in adata.obs.columns:
-                adata.obs[f"{self.result_key}_probabilities"] = pd.Series(dtype="float64")
-            adata.obs.loc[adata.obs["_predict_cells"] == "relabel", f"{self.result_key}_probabilities"] = np.max(
-                embedding, axis=1
-            )
+                adata.obs[f"{self.result_key}_probabilities"] = pd.Series(
+                    dtype="float64"
+                )
+            adata.obs.loc[
+                adata.obs["_predict_cells"] == "relabel",
+                f"{self.result_key}_probabilities",
+            ] = np.max(embedding, axis=1)
 
     def _compute_embedding(self, adata):
         if self.compute_embedding:

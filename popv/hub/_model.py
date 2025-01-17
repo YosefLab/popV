@@ -118,7 +118,7 @@ class HubModel:
         prediction_mode: str = "fast",
         methods: list | None = None,
         gene_symbols: str | None = None,
-        ) -> AnnData:
+    ) -> AnnData:
         """Annotate the query data with the trained model.
 
         Parameters
@@ -161,7 +161,9 @@ class HubModel:
         ).adata
         methods_ = self.metadata.methods
         if prediction_mode == "fast":
-            methods_ = [method for method in methods_ if method in AlgorithmsNT.FAST_ALGORITHMS]
+            methods_ = [
+                method for method in methods_ if method in AlgorithmsNT.FAST_ALGORITHMS
+            ]
         if methods is not None:
             if not set(methods).issubset(methods_):
                 ValueError(
@@ -173,11 +175,10 @@ class HubModel:
             concatenate_adata,
             save_path=f"{save_path}/popv_output",
             methods=methods,
-            methods_kwargs=methods_kwargs
+            methods_kwargs=methods_kwargs,
         )
 
         return concatenate_adata
-
 
     @dependencies("huggingface_hub")
     def push_to_huggingface_hub(
@@ -230,7 +231,7 @@ class HubModel:
             folder_path=self._local_dir,
             repo_id=repo_name,
             token=repo_token,
-            ignore_patterns="*h5ad", # Ignore all h5ad files.
+            ignore_patterns="*h5ad",  # Ignore all h5ad files.
             **kwargs,
         )
         # upload the metadata
@@ -304,7 +305,12 @@ class HubModel:
             cache_dir=cache_dir,
         )
         model_card = ModelCard.load(repo_name)
-        return cls(snapshot_folder, model_card=model_card, repo_name=repo_name, ontology_dir=ontology_snapshot)
+        return cls(
+            snapshot_folder,
+            model_card=model_card,
+            repo_name=repo_name,
+            ontology_dir=ontology_snapshot,
+        )
 
     def __repr__(self):
         def eval_obj(obj):
@@ -355,7 +361,7 @@ class HubModel:
         """
         if self._adata is None:
             cellxgene_census.download_source_h5ad(
-                dataset_id=self.metadata.cellxgene_url.rsplit('/', 2)[1].rsplit('.')[0],
+                dataset_id=self.metadata.cellxgene_url.rsplit("/", 2)[1].rsplit(".")[0],
                 census_version="latest",
                 to_path=self._adata_path,
             )
@@ -380,8 +386,10 @@ class HubModel:
                 census,
                 organism="homo_sapiens",
             )
-            feature_dict = dict(zip(var_df[gene_symbols], var_df['feature_id'], strict=True))
-        adata.var['old_index'] = adata.var_names
+            feature_dict = dict(
+                zip(var_df[gene_symbols], var_df["feature_id"], strict=True)
+            )
+        adata.var["old_index"] = adata.var_names
         adata.var_names = adata.var_names.map(feature_dict)
         adata = adata[:, adata.var.index.notna()].copy()
         return adata

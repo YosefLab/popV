@@ -55,6 +55,8 @@ jobs:
         run: |
           ls -lh resources/dataset/test
           file resources/dataset/test/*.h5ad
+          ls -lh resources/ontology
+          file resources/ontology/*
 
       - name: Install test dependencies
         run: |

@@ -3,15 +3,14 @@
 import anndata
 import numpy as np
 import popv
+import pytest
 
 # Enable cuml in popv.setting depending on pytest flag
-# if pytest.config.getoption("--enable-cuml"):
-#    popv.setting.cuml = True
+if pytest.config.getoption("--enable-cuml"):
+    popv.settings.cuml = True
 import scanpy as sc
 from popv.preprocessing import Process_Query
 from popv.reproducibility import _accuracy
-
-popv.settings.cuml = True
 
 
 def _get_test_anndata(

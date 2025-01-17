@@ -104,6 +104,7 @@ class SVM(BaseAlgorithm):
             required_columns = [self.result_key]
 
         result_df = pd.DataFrame(index=adata.obs_names, columns=required_columns, dtype=float)
+        result_df[self.result_key] = result_df[self.result_key].astype("object")
         if settings.cuml:
             clf = joblib.load(
                 open(

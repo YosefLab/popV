@@ -141,7 +141,9 @@ class SCVI_POPV(BaseAlgorithm):
         relabel_indices = adata.obs["_predict_cells"] == "relabel"
         if "X_scvi" not in adata.obsm:
             # Initialize X_scanvi with the correct shape if it doesn't exist
-            adata.obsm["X_scvi"] = np.zeros((adata.n_obs, latent_representation.shape[1]))
+            adata.obsm["X_scvi"] = np.zeros(
+                (adata.n_obs, latent_representation.shape[1])
+            )
         adata.obsm["X_scvi"][relabel_indices, :] = latent_representation
 
     def _predict(self, adata):
@@ -155,7 +157,7 @@ class SCVI_POPV(BaseAlgorithm):
             knn = make_pipeline(
                 FAISSTransformer(
                     n_neighbors=self.classifier_dict["n_neighbors"],
-                    n_jobs=settings.n_jobs
+                    n_jobs=settings.n_jobs,
                 ),
                 KNeighborsClassifier(
                     metric="precomputed", weights=self.classifier_dict["weights"]
@@ -165,14 +167,20 @@ class SCVI_POPV(BaseAlgorithm):
             joblib.dump(
                 knn,
                 open(
-                    os.path.join(adata.uns["_save_path_trained_models"], "scvi_knn_classifier.joblib"),
+                    os.path.join(
+                        adata.uns["_save_path_trained_models"],
+                        "scvi_knn_classifier.joblib",
+                    ),
                     "wb",
                 ),
             )
         else:
             knn = joblib.load(
                 open(
-                    os.path.join(adata.uns["_save_path_trained_models"], "scvi_knn_classifier.joblib"),
+                    os.path.join(
+                        adata.uns["_save_path_trained_models"],
+                        "scvi_knn_classifier.joblib",
+                    ),
                     "rb",
                 )
             )
@@ -182,13 +190,18 @@ class SCVI_POPV(BaseAlgorithm):
         knn_pred = knn.predict(embedding)
         if self.result_key not in adata.obs.columns:
             adata.obs[self.result_key] = adata.uns["unknown_celltype_label"]
-        adata.obs.loc[adata.obs["_predict_cells"] == "relabel", self.result_key] = adata.uns["label_categories"][knn_pred]
+        adata.obs.loc[adata.obs["_predict_cells"] == "relabel", self.result_key] = (
+            adata.uns["label_categories"][knn_pred]
+        )
         if self.return_probabilities:
             if f"{self.result_key}_probabilities" not in adata.obs.columns:
-                adata.obs[f"{self.result_key}_probabilities"] = pd.Series(dtype="float64")
-            adata.obs.loc[adata.obs["_predict_cells"] == "relabel", f"{self.result_key}_probabilities"] = np.max(
-                knn.predict_proba(embedding), axis=1
-            )
+                adata.obs[f"{self.result_key}_probabilities"] = pd.Series(
+                    dtype="float64"
+                )
+            adata.obs.loc[
+                adata.obs["_predict_cells"] == "relabel",
+                f"{self.result_key}_probabilities",
+            ] = np.max(knn.predict_proba(embedding), axis=1)
 
     def _compute_embedding(self, adata):
         if self.compute_embedding:

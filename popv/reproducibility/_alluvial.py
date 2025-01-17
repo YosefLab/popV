@@ -246,9 +246,7 @@ class AlluvialTool:
         lci = len(color_items)
         if rand_seed is not None:
             np.random.seed(rand_seed)
-        cmap = (
-            cmap if cmap is not None else matplotlib.cm.get_cmap("hsv", lci * 10**3)
-        )
+        cmap = cmap if cmap is not None else matplotlib.cm.get_cmap("hsv", lci * 10**3)
         color_array = (
             colors
             if colors is not None

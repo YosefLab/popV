@@ -22,16 +22,27 @@ from popv import _utils, algorithms
 @dataclass
 class AlgorithmsNT:
     OUTDATED_ALGORITHMS: tuple[str, ...] = ("rf", "knn_on_scanorama")
-    FAST_ALGORITHMS: tuple[str, ...] = ("knn_on_scvi", "scanvi", "svm", "xgboost", "onclass", "celltypist")
+    FAST_ALGORITHMS: tuple[str, ...] = (
+        "knn_on_scvi",
+        "scanvi",
+        "svm",
+        "xgboost",
+        "onclass",
+        "celltypist",
+    )
     CURRENT_ALGORITHMS: tuple[str, ...] = field(init=False)
     ALL_ALGORITHMS: tuple[str, ...] = field(init=False)
 
     def __post_init__(self):
         self.CURRENT_ALGORITHMS = tuple(
-            i[0] for i in inspect.getmembers(algorithms, inspect.isclass)
+            i[0]
+            for i in inspect.getmembers(algorithms, inspect.isclass)
             if i[0] not in self.OUTDATED_ALGORITHMS
         )
-        self.ALL_ALGORITHMS = tuple(i[0] for i in inspect.getmembers(algorithms, inspect.isclass))
+        self.ALL_ALGORITHMS = tuple(
+            i[0] for i in inspect.getmembers(algorithms, inspect.isclass)
+        )
+
 
 # Example usage
 algorithms_nt = AlgorithmsNT()
@@ -63,21 +74,31 @@ def annotate_data(
     if save_path is not None and not os.path.exists(save_path):
         os.makedirs(save_path, exist_ok=True)
     methods = (
-        methods if isinstance(methods, list)
-        else algorithms_nt.ALL_ALGORITHMS if methods=="all"
+        methods
+        if isinstance(methods, list)
         else (
-            algorithms_nt.FAST_ALGORITHMS if adata.uns["_prediction_mode"] == "fast"
-            else algorithms_nt.CURRENT_ALGORITHMS
+            algorithms_nt.ALL_ALGORITHMS
+            if methods == "all"
+            else (
+                algorithms_nt.FAST_ALGORITHMS
+                if adata.uns["_prediction_mode"] == "fast"
+                else algorithms_nt.CURRENT_ALGORITHMS
+            )
         )
     )
-    if adata.uns["ref_prediction_keys"] is not None and adata.uns["_prediction_mode"] == "inference":
+    if (
+        adata.uns["ref_prediction_keys"] is not None
+        and adata.uns["_prediction_mode"] == "inference"
+    ):
         if not set(methods).issubset(adata.uns["ref_prediction_keys"]):
             missing_methods = set(methods) - set(adata.uns["ref_prediction_keys"])
             ValueError(
                 f"Method {missing_methods} are not present in the reference data."
                 "Use relabel_reference_cells=True in Process_Query or remove these methods."
             )
-        adata.obs[adata.uns["ref_prediction_keys"]] = adata.obs[adata.uns["ref_prediction_keys"]].astype("object")
+        adata.obs[adata.uns["ref_prediction_keys"]] = adata.obs[
+            adata.uns["ref_prediction_keys"]
+        ].astype("object")
 
     if adata.uns["_cl_obo_file"] is False and "onclass" in methods:
         methods.remove("onclass")
@@ -152,7 +173,9 @@ def compute_consensus(adata: anndata.AnnData, prediction_keys: list) -> None:
 
     agreement = adata.obs[prediction_keys].apply(_utils.majority_count, axis=1)
     adata.obs["popv_majority_vote_score"] = agreement.values
-    adata.obs["popv_majority_vote_score"] = adata.obs["popv_majority_vote_score"].astype("category")
+    adata.obs["popv_majority_vote_score"] = adata.obs[
+        "popv_majority_vote_score"
+    ].astype("category")
 
 
 def ontology_vote_onclass(
@@ -182,11 +205,20 @@ def ontology_vote_onclass(
         G = _utils.make_ontology_dag(adata.uns["_cl_obo_file"])
         if adata.uns["_save_path_trained_models"] is not None:
             joblib.dump(
-                G, open(os.path.join(adata.uns["_save_path_trained_models"], "obo_dag.joblib"), "wb")
+                G,
+                open(
+                    os.path.join(
+                        adata.uns["_save_path_trained_models"], "obo_dag.joblib"
+                    ),
+                    "wb",
+                ),
             )
     else:
         G = joblib.load(
-            open(os.path.join(adata.uns["_save_path_trained_models"], "obo_dag.joblib"), "rb")
+            open(
+                os.path.join(adata.uns["_save_path_trained_models"], "obo_dag.joblib"),
+                "rb",
+            )
         )
 
     cell_type_root_to_node = {}
@@ -279,11 +311,20 @@ def ontology_parent_onclass(
         G = _utils.make_ontology_dag(adata.uns["_cl_obo_file"])
         if adata.uns["_save_path_trained_models"] is not None:
             joblib.dump(
-                G, open(os.path.join(adata.uns["_save_path_trained_models"], "obo_dag.joblib"), "wb")
+                G,
+                open(
+                    os.path.join(
+                        adata.uns["_save_path_trained_models"], "obo_dag.joblib"
+                    ),
+                    "wb",
+                ),
             )
     else:
         G = joblib.load(
-            open(os.path.join(adata.uns["_save_path_trained_models"], "obo_dag.joblib"), "rb")
+            open(
+                os.path.join(adata.uns["_save_path_trained_models"], "obo_dag.joblib"),
+                "rb",
+            )
         )
 
     cell_type_root_to_node = {}

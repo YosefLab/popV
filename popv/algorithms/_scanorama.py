@@ -93,8 +93,7 @@ class SCANORAMA(BaseAlgorithm):
 
         knn = make_pipeline(
             FAISSTransformer(
-                n_neighbors=self.classifier_dict["n_neighbors"],
-                n_jobs=settings.n_jobs
+                n_neighbors=self.classifier_dict["n_neighbors"], n_jobs=settings.n_jobs
             ),
             KNeighborsClassifier(
                 metric="precomputed", weights=self.classifier_dict["weights"]

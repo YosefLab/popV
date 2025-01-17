@@ -204,8 +204,12 @@ class HubModelCardHelper:
         )
 
         if self.metrics_report is not None:
-            validation_accuracies = self.metrics_report.get("query_accuracy", "Not provided by uploader.")
-            train_accuracies = self.metrics_report.get("ref_accuracy", "Not provided by uploader.")
+            validation_accuracies = self.metrics_report.get(
+                "query_accuracy", "Not provided by uploader."
+            )
+            train_accuracies = self.metrics_report.get(
+                "ref_accuracy", "Not provided by uploader."
+            )
         else:
             validation_accuracies = "Not provided by uploader."
             train_accuracies = "Not provided by uploader."

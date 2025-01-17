@@ -5,7 +5,7 @@ import numpy as np
 import popv
 
 # Enable cuml in popv.setting depending on pytest flag
-#if pytest.config.getoption("--enable-cuml"):
+# if pytest.config.getoption("--enable-cuml"):
 #    popv.setting.cuml = True
 import scanpy as sc
 from popv.preprocessing import Process_Query
@@ -14,7 +14,9 @@ from popv.reproducibility import _accuracy
 popv.settings.cuml = True
 
 
-def _get_test_anndata(cl_obo_folder="resources/ontology/", prediction_mode="retrain", ref_adata=None):
+def _get_test_anndata(
+    cl_obo_folder="resources/ontology/", prediction_mode="retrain", ref_adata=None
+):
     save_folder = "tests/tmp_testing/popv_test_results/"
 
     if ref_adata is None:
@@ -125,7 +127,8 @@ def test_scanvi():
     """Test SCANVI algorithm."""
     adata = _get_test_anndata().adata
     current_method = popv.algorithms.scanvi(
-        train_kwargs={"max_epochs": 2, "max_epochs_unsupervised": 1})
+        train_kwargs={"max_epochs": 2, "max_epochs_unsupervised": 1}
+    )
 
     current_method._compute_integration(adata)
     current_method._predict(adata)
@@ -209,7 +212,9 @@ def test_annotation():
     assert "popv_majority_vote_prediction" in adata.obs.columns
     assert not adata.obs["popv_majority_vote_prediction"].isnull().any()
 
-    adata = _get_test_anndata(ref_adata=adata[adata.obs["_dataset"]=="ref"], prediction_mode="inference").adata
+    adata = _get_test_anndata(
+        ref_adata=adata[adata.obs["_dataset"] == "ref"], prediction_mode="inference"
+    ).adata
     popv.annotation.annotate_data(
         adata,
         save_path="tests/tmp_testing/popv_test_results/",
@@ -297,15 +302,13 @@ def test_annotation_hub():
         "license_info": "cc-by-4.0",
     }
     hmch = popv.hub.HubModelCardHelper.from_dir(
-        output_folder,
-        anndata_version=anndata.__version__,
-        **model_json
+        output_folder, anndata_version=anndata.__version__, **model_json
     )
     hm = popv.hub.HubMetadata.from_anndata(
         adata,
         popv_version=popv.__version__,
         anndata_version=anndata.__version__,
-        cellxgene_url=model_json['cellxgene_url']
+        cellxgene_url=model_json["cellxgene_url"],
     )
     hmo = popv.hub.HubModel(output_folder, model_card=hmch, metadata=hm)
     hmo.push_to_huggingface_hub(

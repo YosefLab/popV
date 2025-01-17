@@ -27,7 +27,7 @@ sys.path.insert(0, str(HERE / "extensions"))
 
 # -- Project information -----------------------------------------------------
 
-project_name = "PopV"
+project_name = "popV"
 info = metadata(project_name)
 package_name = "popv"
 author = info["Author"]

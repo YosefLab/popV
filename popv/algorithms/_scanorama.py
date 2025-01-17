@@ -6,10 +6,9 @@ import anndata
 import numpy as np
 import scanorama
 import scanpy as sc
-from pynndescent import PyNNDescentTransformer
-from sklearn_ann.kneighbors.faiss import FAISSTransformer
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.pipeline import make_pipeline
+from sklearn_ann.kneighbors.faiss import FAISSTransformer
 
 from popv import settings
 from popv.algorithms._base_algorithm import BaseAlgorithm

@@ -49,6 +49,7 @@ dependencies = [
     "scikit-misc",
     "sklearn-ann",
     "scvi-tools",
+    "tensorflow",
     "harmony-pytorch",
     "huggingface",
     "xgboost",

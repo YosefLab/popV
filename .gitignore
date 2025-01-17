@@ -3,6 +3,7 @@
 *~
 buck-out/
 /tests/tmp_testing
+/popv_test_results/
 
 # Compiled files
 .venv/
@@ -20,6 +21,8 @@ __pycache__/
 /.cache/
 /data/
 /node_modules/
+/test/
+/new_ontology/
 
 # docs
 /docs/generated/

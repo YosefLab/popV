@@ -5,15 +5,17 @@
 # https://www.sphinx-doc.org/en/master/usage/configuration.html
 
 # -- Path setup --------------------------------------------------------------
+from typing import Any
+import subprocess
+import os
+import importlib
+import inspect
+import re
 import sys
 from datetime import datetime
 from importlib.metadata import metadata
 from pathlib import Path
 import importlib.util
-import inspect
-import os
-import re
-import subprocess
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -25,15 +27,13 @@ sys.path.insert(0, str(HERE / "extensions"))
 
 # -- Project information -----------------------------------------------------
 
-# NOTE: If you installed your project in editable mode, this might be stale.
-#       If this is the case, reinstall it to refresh the metadata
-info = metadata("PopV")
-project_name = info["Name"]
+project_name = "popV"
+info = metadata(project_name)
+package_name = "popv"
 author = info["Author"]
 copyright = f"{datetime.now():%Y}, {author}."
 version = info["Version"]
-urls = dict(pu.split(", ") for pu in info.get_all("Project-URL"))
-repository_url = urls["Source"]
+repository_url = f"https://github.com/YosefLab/{project_name}"
 
 # The full version, including alpha/beta/rc tags
 release = info["Version"]
@@ -58,8 +58,14 @@ html_context = {
 extensions = [
     "myst_nb",
     "sphinx.ext.autodoc",
-    "sphinx.ext.intersphinx",
+    "sphinx_copybutton",
     "sphinx.ext.linkcode",
+    "sphinx.ext.intersphinx",
+    "sphinx.ext.autosummary",
+    "sphinx.ext.napoleon",
+    "sphinx.ext.extlinks",
+    "sphinxcontrib.bibtex",
+    "sphinx_autodoc_typehints",
     "sphinx.ext.mathjax",
     "sphinx.ext.napoleon",
     "sphinx_autodoc_typehints",  # needs to be after napoleon
@@ -76,6 +82,7 @@ extensions = [
 autosummary_generate = True
 autodoc_member_order = "groupwise"
 default_role = "literal"
+bibtex_reference_style = "author_year"
 napoleon_google_docstring = False
 napoleon_numpy_docstring = True
 napoleon_include_init_with_doc = False
@@ -103,15 +110,56 @@ source_suffix = {
 }
 
 intersphinx_mapping = {
-    "python": ("https://docs.python.org/3", None),
     "anndata": ("https://anndata.readthedocs.io/en/stable/", None),
+    "ipython": ("https://ipython.readthedocs.io/en/stable/", None),
+    "matplotlib": ("https://matplotlib.org/", None),
     "numpy": ("https://numpy.org/doc/stable/", None),
+    "pandas": ("https://pandas.pydata.org/docs/", None),
+    "python": ("https://docs.python.org/3", None),
+    "scipy": ("https://docs.scipy.org/doc/scipy/reference/", None),
+    "sklearn": ("https://scikit-learn.org/stable/", None),
+    "scanpy": ("https://scanpy.readthedocs.io/en/stable/", None),
 }
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path.
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store", "**.ipynb_checkpoints"]
+
+# extlinks config
+extlinks = {
+    "issue": (f"{repository_url}/issues/%s", "#%s"),
+    "pr": (f"{repository_url}/pull/%s", "#%s"),
+    "ghuser": ("https://github.com/%s", "@%s"),
+}
+
+# -- Linkcode settings -------------------------------------------------
+
+
+def git(*args):
+    """Run a git command and return the output."""
+    return subprocess.check_output(["git", *args]).strip().decode()
+
+
+# https://github.com/DisnakeDev/disnake/blob/7853da70b13fcd2978c39c0b7efa59b34d298186/docs/conf.py#L192
+# Current git reference. Uses branch/tag name if found, otherwise uses commit hash
+git_ref = None
+try:
+    git_ref = git("name-rev", "--name-only", "--no-undefined", "HEAD")
+    git_ref = re.sub(r"^(remotes/[^/]+|tags)/", "", git_ref)
+except Exception:  # noqa: BLE001
+    pass
+
+# (if no name found or relative ref, use commit hash instead)
+if not git_ref or re.search(r"[\^~]", git_ref):
+    try:
+        git_ref = git("rev-parse", "HEAD")
+    except Exception:  # noqa: BLE001
+        git_ref = "main"
+
+# https://github.com/DisnakeDev/disnake/blob/7853da70b13fcd2978c39c0b7efa59b34d298186/docs/conf.py#L192
+github_repo = f"https://github.com/{html_context['github_user']}/{project_name}"
+_project_module_path = os.path.dirname(importlib.util.find_spec(package_name).origin)  # type: ignore
 
 
 # -- Options for HTML output -------------------------------------------------
@@ -122,14 +170,11 @@ exclude_patterns = ["_build", "Thumbs.db", ".DS_Store", "**.ipynb_checkpoints"]
 html_theme = "sphinx_book_theme"
 html_static_path = ["_static"]
 html_css_files = ["css/custom.css"]
-
-html_title = project_name
+html_title = "popV"
 
 html_theme_options = {
-    "repository_url": repository_url,
+    "repository_url": github_repo,
     "use_repository_button": True,
-    "path_to_docs": "docs/",
-    "navigation_with_keys": False,
 }
 
 pygments_style = "default"
@@ -137,7 +182,6 @@ pygments_style = "default"
 nitpick_ignore = [
     # If building the documentation fails because of a missing link that is outside your control,
     # you can add an exception to this list.
-    #     ("py:class", "igraph.Graph"),
 ]
 
 

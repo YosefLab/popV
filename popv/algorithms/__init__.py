@@ -7,15 +7,18 @@ from ._scanorama import SCANORAMA as knn_on_scanorama
 from ._scanvi import SCANVI_POPV as scanvi
 from ._scvi import SCVI_POPV as knn_on_scvi
 from ._svm import SVM as svm
+from ._xgboost import XGboost as xgboost
 
 __all__ = [
-    "knn_on_scvi",
-    "scanvi",
+    "base_algorithm",
+    "celltypist",
     "knn_on_bbknn",
     "knn_on_harmony",
-    "svm",
-    "rf",
-    "onclass",
     "knn_on_scanorama",
-    "celltypist",
+    "knn_on_scvi",
+    "onclass",
+    "rf",
+    "scanvi",
+    "svm",
+    "xgboost",
 ]

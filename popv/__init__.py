@@ -5,8 +5,11 @@ import logging
 
 import scanpy as sc
 
-from . import algorithms, annotation, preprocessing, visualization
-from ._settings import Config
+from ._settings import settings  # isort: skip
+
+# Import order to avoid circular imports
+from . import algorithms, annotation, hub, preprocessing, visualization
+from ._utils import create_ontology_resources
 
 try:
     import importlib.metadata as importlib_metadata
@@ -15,12 +18,19 @@ except ModuleNotFoundError:
 package_name = "popv"
 __version__ = importlib_metadata.version(package_name)
 
-Config.verbosity = logging.INFO
-Config.num_threads = 10
-sc.settings.n_jobs = Config.num_threads
+settings.verbosity = logging.INFO
 
-test_var = "test"
+# Jax sets the root logger, this prevents double output.
 popv_logger = logging.getLogger("popv")
 popv_logger.propagate = False
 
-__all__ = ["settings", "algorithms", "annotation", "preprocessing", "visualization"]
+
+__all__ = [
+    "algorithms",
+    "annotation",
+    "create_ontology_resources",
+    "hub",
+    "preprocessing",
+    "settings",
+    "visualization",
+]

@@ -276,7 +276,7 @@ def test_annotation_no_ontology():
     assert not adata.obs["popv_majority_vote_prediction"].isnull().any()
 
 
-def test_annotation_hub():
+def test_annotation_hub(private):
     """Test Annotation and Plotting pipeline without ontology."""
     output_folder = "tests/tmp_testing/popv_test_results_hub/"
     adata = _get_test_anndata(output_folder=output_folder).adata
@@ -310,12 +310,13 @@ def test_annotation_hub():
         cellxgene_url=model_json["cellxgene_url"],
     )
     hmo = popv.hub.HubModel(output_folder, model_card=hmch, metadata=hm)
-    hmo.push_to_huggingface_hub(
-        repo_name="popV/test",
-        repo_token=None,
-        repo_create=True,
-        repo_create_kwargs={"exist_ok": True},
-    )
+    if not private:
+        hmo.push_to_huggingface_hub(
+            repo_name="popV/test",
+            repo_token=None,
+            repo_create=True,
+            repo_create_kwargs={"exist_ok": True},
+        )
     hmo = popv.hub.HubModel.pull_from_huggingface_hub(
         "popV/test", cache_dir="tests/tmp_testing/popv_test_results_hub_pulled/"
     )

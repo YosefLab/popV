@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import logging
 import os
-import pickle
 
 import joblib
 import numpy as np
@@ -126,7 +125,7 @@ class SVM(BaseAlgorithm):
                         clf.predict_proba(tmp_x), axis=1
                     ).astype(float)
         else:
-            clf = pickle.load(
+            clf = joblib.load(
                 open(
                     os.path.join(adata.uns["_save_path_trained_models"], "svm_classifier.joblib"),
                     "rb",

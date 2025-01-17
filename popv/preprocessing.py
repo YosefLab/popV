@@ -156,6 +156,7 @@ class Process_Query:
             pretrained_scvi_genes = torch.load(
                 os.path.join(self.pretrained_scvi_path, "model.pt"),
                 map_location="cpu",
+                weights_only=False,
             )["var_names"]
             if self.genes is not None and not np.array_equal(pretrained_scvi_genes, self.genes):
                 warnings.warn(
@@ -170,6 +171,7 @@ class Process_Query:
             pretrained_scanvi_genes = torch.load(
                 scanvi_path,
                 map_location="cpu",
+                weights_only=False,
             )["var_names"]
             if not np.array_equal(pretrained_scanvi_genes, self.genes):
                 warnings.warn(

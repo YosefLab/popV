@@ -10,10 +10,10 @@ def pytest_addoption(parser):
         help="Option to specify which accelerator to use for tests.",
     )
     parser.addoption(
-        "--devices",
+        "--cuml",
         action="store",
-        default="auto",
-        help="Option to specify which devices to use for tests.",
+        default=False,
+        help="Option to specify whether cuml is used.",
     )
 
 
@@ -25,5 +25,5 @@ def accelerator(request):
 
 @pytest.fixture(scope="session")
 def devices(request):
-    """Docstring for devices."""
-    return request.config.getoption("--devices")
+    """Docstring for cuml."""
+    return request.config.getoption("--cuml")

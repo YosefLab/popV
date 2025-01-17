@@ -4,13 +4,18 @@ import anndata
 import numpy as np
 import popv
 import pytest
-
-# Enable cuml in popv.setting depending on pytest flag
-if pytest.config.getoption("--enable-cuml"):
-    popv.settings.cuml = True
 import scanpy as sc
 from popv.preprocessing import Process_Query
 from popv.reproducibility import _accuracy
+
+
+# Enable cuml in popv.setting depending on pytest flag
+@pytest.fixture(autouse=True)
+def configure_popv(pytestconfig):
+    """Configure popv.settings based on pytest flag."""
+    if pytestconfig.getoption("--cuml"):
+        popv.settings.cuml = True
+    popv.settings.accelerator = pytestconfig.getoption("--accelerator")
 
 
 def _get_test_anndata(
@@ -277,8 +282,12 @@ def test_annotation_hub():
     adata = _get_test_anndata(output_folder=output_folder).adata
     popv.annotation.annotate_data(
         adata,
-        methods=["svm", "xgboost"],
-        save_path=output_folder,
+        save_path="tests/tmp_testing/popv_test_results/",
+        methods_kwargs={
+            "knn_on_bbknn": {"method_kwargs": {"use_annoy": True}},
+            "knn_on_scvi": {"train_kwargs": {"max_epochs": 3}},
+            "scanvi": {"train_kwargs": {"max_epochs": 3, "max_epochs_unsupervised": 1}},
+        },
     )
     minified_adata = popv._utils.get_minified_adata(adata)
     minified_adata.write(f"{output_folder}/minified_ref_adata.h5ad")

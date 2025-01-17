@@ -53,8 +53,8 @@ jobs:
 
       - name: Debug LFS files
         run: |
-          ls -lh tests/data
-          file tests/data/*.h5ad
+          ls -lh resources/dataset/test
+          file resources/dataset/test/*.h5ad
 
       - name: Install test dependencies
         run: |

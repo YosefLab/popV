@@ -94,7 +94,7 @@ def annotate_data(
         adata.obs[adata.uns["ref_prediction_keys"]] = adata.obs[adata.uns["ref_prediction_keys"]].astype("object")
 
     if adata.uns["_cl_obo_file"] is False and "onclass" in methods:
-        methods.remove("onclass")
+        methods = tuple(method for method in methods if method != "onclass")
 
     methods_kwargs = methods_kwargs if methods_kwargs else {}
 

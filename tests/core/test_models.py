@@ -14,9 +14,12 @@ from popv.reproducibility import _accuracy
 popv.settings.cuml = True
 
 
-def _get_test_anndata(cl_obo_folder="resources/ontology/", prediction_mode="retrain", ref_adata=None):
-    save_folder = "tests/tmp_testing/popv_test_results/"
-
+def _get_test_anndata(
+    cl_obo_folder="resources/ontology/",
+    prediction_mode="retrain",
+    ref_adata=None,
+    output_folder="tests/tmp_testing/popv_test_results/",
+):
     if ref_adata is None:
         ref_adata_path = "resources/dataset/test/ts_lung_subset.h5ad"
         ref_adata = sc.read(ref_adata_path)
@@ -46,7 +49,7 @@ def _get_test_anndata(cl_obo_folder="resources/ontology/", prediction_mode="retr
         ref_batch_key=ref_batch_key,
         ref_layer_key=ref_layer_key,
         unknown_celltype_label=unknown_celltype_label,
-        save_path_trained_models=save_folder,
+        save_path_trained_models=output_folder,
         cl_obo_folder=cl_obo_folder,
         prediction_mode=prediction_mode,
         n_samples_per_label=n_samples_per_label,
@@ -271,9 +274,15 @@ def test_annotation_no_ontology():
 
 def test_annotation_hub():
     """Test Annotation and Plotting pipeline without ontology."""
-    adata = _get_test_anndata(cl_obo_folder=False).adata
     output_folder = "tests/tmp_testing/popv_test_results_hub/"
-    popv.annotation.annotate_data(adata, methods=["svm", "xgboost"], save_path=output_folder)
+    adata = _get_test_anndata(output_folder=output_folder).adata
+    popv.annotation.annotate_data(
+        adata,
+        methods=["svm", "xgboost"],
+        save_path=output_folder,
+    )
+    minified_adata = popv._utils.get_minified_adata(adata)
+    minified_adata.write(f"{output_folder}/minified_ref_adata.h5ad")
     popv.hub.create_criticism_report(
         adata,
         save_folder=output_folder,
@@ -299,4 +308,9 @@ def test_annotation_hub():
         repo_create=True,
         repo_create_kwargs={"exist_ok": True},
     )
-    hmo.annotate_data(adata, prediction_mode="fast")
+    hmo = popv.hub.HubModel.pull_from_huggingface_hub(
+        "popV/test", cache_dir="tests/tmp_testing/popv_test_results_hub_pulled/"
+    )
+    query_adata_path = "resources/dataset/test/lca_subset.h5ad"
+    query_adata = sc.read(query_adata_path)
+    hmo.annotate_data(query_adata, prediction_mode="fast")

@@ -100,7 +100,7 @@ will provide notebooks to create the Natural Language Model used in OnClass for
 this user-defined ontology.
 
 ```bash
-conda create -n yourenv python=3.8
+conda create -n yourenv python=3.11
 conda activate yourenv
 pip install git+https://github.com/YosefLab/popV
 ```

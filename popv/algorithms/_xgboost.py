@@ -76,7 +76,7 @@ class XGboost(BaseAlgorithm):
             bst.load_model(os.path.join(adata.uns["_save_path_trained_models"], "xgboost_classifier.model"))
 
         output_probabilities = bst.predict(dtest)
-        unassigned_idx = list(adata.uns["label_categories"]).index("unassigned")
+        unassigned_idx = list(adata.uns["label_categories"]).index(adata.uns["unknown_celltype_label"])
         output_probabilities[:, unassigned_idx] = 0.0
         if self.result_key not in adata.obs.columns:
             adata.obs[self.result_key] = adata.uns["unknown_celltype_label"]

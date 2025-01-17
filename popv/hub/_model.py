@@ -143,6 +143,7 @@ class HubModel:
         setup_dict = self.metadata.setup_dict
         if gene_symbols is not None:
             query_adata = self.map_genes(adata=query_adata, gene_symbols=gene_symbols)
+        print("LLLLLL", self.local_dir, os.listdir(self.local_dir))
 
         concatenate_adata = Process_Query(
             query_adata,
@@ -298,6 +299,7 @@ class HubModel:
             repo_type="dataset",
             cache_dir=cache_dir,
         )
+        print("SSSSSSS", ontology_snapshot)
         model_card = ModelCard.load(repo_name)
         return cls(
             snapshot_folder,

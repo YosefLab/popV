@@ -125,8 +125,6 @@ class Process_Query:
         self.n_samples_per_label = n_samples_per_label
         self.batch_key = {"reference": ref_batch_key, "query": query_batch_key}
 
-        if save_path_trained_models[-1] != "/":
-            save_path_trained_models += "/"
         os.makedirs(save_path_trained_models, exist_ok=True)
         self.save_path_trained_models = save_path_trained_models
         self.pretrained_scvi_path = pretrained_scvi_path

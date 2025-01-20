@@ -23,26 +23,40 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
-            python: "3.9"
-          - os: ubuntu-latest
             python: "3.10"
           - os: ubuntu-latest
             python: "3.11"
+          - os: ubuntu-latest
+            python: "3.12"
 
-    name: ${{ matrix.name }} Python ${{ matrix.python }}
+    name: ${{ matrix.os }} Python ${{ matrix.python }}
 
     env:
       OS: ${{ matrix.os }}
       PYTHON: ${{ matrix.python }}
 
     steps:
-      - uses: actions/checkout@v3
+      - name: Set up Git LFS
+        run: git lfs install
+
+      - name: Check out repository
+        uses: actions/checkout@v3
+        with:
+          lfs: true
+
       - name: Set up Python ${{ matrix.python }}
         uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python }}
           cache: "pip"
           cache-dependency-path: "**/pyproject.toml"
+
+      - name: Debug LFS files
+        run: |
+          ls -lh resources/dataset/test
+          file resources/dataset/test/*.h5ad
+          ls -lh resources/ontology
+          file resources/ontology/*
 
       - name: Install test dependencies
         run: |

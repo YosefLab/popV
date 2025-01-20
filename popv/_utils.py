@@ -1,10 +1,113 @@
 from __future__ import annotations
 
+import json
 import logging
+import os
+from pathlib import Path
 
 import networkx as nx
 import numpy as np
-import obonet
+import pandas as pd
+from anndata import AnnData
+from scipy.sparse import csr_matrix
+
+
+def get_minified_adata(
+    adata,
+) -> AnnData:
+    """Return a minified AnnData.
+
+    Parameters
+    ----------
+    adata
+        Original AnnData, of which we want to create a minified version.
+    """
+    adata = adata.copy()
+    del adata.raw
+    all_zeros = csr_matrix(adata.X.shape)
+    X = all_zeros
+    layers = {layer: all_zeros.copy() for layer in adata.layers}
+    adata.X = X
+    adata.layers = layers
+    return adata
+
+
+def create_ontology_nlp_emb(lbl2sent, output_path):
+    """
+    Create ontology embeddings using NLP and saves them to {output_path}/cl.ontology.nlp.emb.
+
+    Parameters
+    ----------
+    lbl2sent
+        Dictionary with label as key and description as value.
+    output_path
+        Path to save the embeddings.
+
+    """
+    from sentence_transformers import SentenceTransformer
+
+    model = SentenceTransformer("all-mpnet-base-v2")
+
+    sentences = list(lbl2sent.values())
+    sentence_embeddings = model.encode(sentences)
+
+    sent2vec = {}
+    for label, embedding in zip(lbl2sent.keys(), sentence_embeddings, strict=True):
+        sent2vec[label] = embedding
+
+    output_file = os.path.join(output_path, "cl.ontology.nlp.emb")
+    with open(output_file, "w") as fout:
+        for label, vec in sent2vec.items():
+            fout.write(label + "\t" + "\t".join(map(str, vec)) + "\n")
+
+
+def create_ontology_resources(cl_obo_file):
+    """
+    Create ontology resources.
+
+    Parameters
+    ----------
+    cl_obo_file
+
+    Returns
+    -------
+    g
+        Graph object
+    id2name
+        Dictionary of ontology id to celltype names
+    name2id
+        Dictionary of celltype names to ontology id
+    """
+    import json
+
+    # Read the taxrank ontology
+    with open(cl_obo_file) as f:
+        graph = json.load(f)["graphs"][0]
+    output_path = Path(cl_obo_file).parent
+    popv_dict = {}
+    popv_dict["nodes"] = [entry for entry in graph["nodes"] if entry["type"] == "CLASS" and entry.get("lbl", False)]
+    popv_dict["lbl_sentence"] = {
+        entry[
+            "lbl"
+        ]: f"{entry['lbl']}: {entry.get('meta', {}).get('definition', {}).get('val', '')} {' '.join(entry.get('meta', {}).get('comments', []))}"
+        for entry in popv_dict["nodes"]
+    }
+    popv_dict["id_2_lbl"] = {entry["id"]: entry["lbl"] for entry in popv_dict["nodes"]}
+    popv_dict["lbl_2_id"] = {entry["lbl"]: entry["id"] for entry in popv_dict["nodes"]}
+    popv_dict["edges"] = [
+        i
+        for i in graph["edges"]
+        if i["sub"].split("/")[-1][0:2] == "CL" and i["obj"].split("/")[-1][0:2] == "CL" and i["pred"] == "is_a"
+    ]
+    popv_dict["ct_edges"] = [
+        [popv_dict["id_2_lbl"][i["sub"]], popv_dict["id_2_lbl"][i["obj"]]] for i in popv_dict["edges"]
+    ]
+    create_ontology_nlp_emb(popv_dict["lbl_sentence"], output_path)
+
+    with open(f"{output_path}/cl_popv.json", "w") as f:
+        json.dump(popv_dict, f, indent=4)
+    children_edge_celltype_df = pd.DataFrame(popv_dict["ct_edges"])
+    children_edge_celltype_df.to_csv(f"{output_path}/cl.ontology", sep="\t", header=False, index=False)
 
 
 def subsample_dataset(
@@ -39,7 +142,7 @@ def subsample_dataset(
     sample_idx = []
     labels_counts = dict(adata.obs[labels_key].value_counts())
 
-    logging.info(f"Sampling {n_samples_per_label} per label")
+    logging.info(f"Sampling {n_samples_per_label} cells per label")
 
     for label in ignore_label:
         labels_counts.pop(label, None)
@@ -49,9 +152,7 @@ def subsample_dataset(
         if labels_counts[label] < n_samples_per_label:
             sample_idx.append(label_locs)
         else:
-            label_subset = np.random.choice(
-                label_locs, n_samples_per_label, replace=False
-            )
+            label_subset = np.random.choice(label_locs, n_samples_per_label, replace=False)
             sample_idx.append(label_subset)
     sample_idx = np.concatenate(sample_idx)
     return adata.obs_names[sample_idx]
@@ -81,16 +182,14 @@ def check_genes_is_subset(ref_genes, query_genes):
         logging.info("All ref genes are in query dataset. Can use pretrained models.")
         is_subset = True
     else:
-        logging.info(
-            "Not all reference genes are in query dataset. Set 'prediction_mode' to 'retrain'."
-        )
+        logging.info("Not all reference genes are in query dataset. Set 'prediction_mode' to 'retrain'.")
         is_subset = False
     return is_subset
 
 
 def make_batch_covariate(adata, batch_keys, new_batch_key):
     """
-    Combine all the batches in batch_keys into a single batch. Save result into adata.obs['_batch']
+    Combine all the batches in batch_keys into a single batch. Save result into adata.obs['_batch'].
 
     Parameters
     ----------
@@ -99,9 +198,7 @@ def make_batch_covariate(adata, batch_keys, new_batch_key):
     batch_keys
         List of keys in adat.obs corresponding to batches
     """
-    adata.obs[new_batch_key] = (
-        adata.obs[batch_keys].astype(str).sum(1).astype("category")
-    )
+    adata.obs[new_batch_key] = adata.obs[batch_keys].astype(str).sum(1).astype("category")
 
 
 def calculate_depths(g):
@@ -132,13 +229,13 @@ def calculate_depths(g):
     return depths
 
 
-def make_ontology_dag(obofile, lowercase=False):
+def make_ontology_dag(cl_obo_file, lowercase=False):
     """
     Construct a graph with all cell-types.
 
     Parameters
     ----------
-    obofile
+    cl_obo_file
         File with all ontology cell-types.
 
     Returns
@@ -146,38 +243,13 @@ def make_ontology_dag(obofile, lowercase=False):
     g
         Graph containing all cell-types
     """
-    co = obonet.read_obo(obofile, encoding="utf-8")
-    id_to_name = {id_: data.get("name") for id_, data in co.nodes(data=True)}
-    name_to_id = {
-        data["name"]: id_ for id_, data in co.nodes(data=True) if ("name" in data)
-    }
+    with open(cl_obo_file) as f:
+        cell_ontology = json.load(f)
+    g = nx.DiGraph()
+    g.add_edges_from(cell_ontology["ct_edges"])
 
-    # get all node ids that are celltypes (start with CL)
-    cl_ids = {id_: True for _, id_ in name_to_id.items() if id_.startswith("CL:")}
-
-    # make new empty graph
-    g = nx.MultiDiGraph()
-
-    # add all celltype nodes to graph
-    for node in co.nodes():
-        if node in cl_ids:
-            nodename = id_to_name[node]
-            g.add_node(nodename)
-
-    # iterate over
-    for node in co.nodes():
-        if node in cl_ids:
-            for child, parent, key in co.out_edges(node, keys=True):
-                if (
-                    child.startswith("CL:")
-                    and parent.startswith("CL:")
-                    and key == "is_a"
-                ):
-                    childname = id_to_name[child]
-                    parentname = id_to_name[parent]
-                    g.add_edge(childname, parentname, key=key)
-
-    assert nx.is_directed_acyclic_graph(g) is True
+    if not nx.is_directed_acyclic_graph(g):
+        raise ValueError(f"Graph is not a Directed Acyclic Graph. {nx.find_cycle(g, orientation='original')}")
 
     if lowercase:
         mapping = {s: s.lower() for s in list(g.nodes)}

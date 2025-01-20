@@ -1,25 +1,36 @@
 """Test various algorithms implemented in PopV."""
 
-import os
-from os.path import exists
-
 import anndata
 import numpy as np
 import popv
+import pytest
 import scanpy as sc
 from popv.preprocessing import Process_Query
 from popv.reproducibility import _accuracy
 
 
-def _get_test_anndata(cl_obo_folder="resources/ontology/", mode="retrain"):
-    print("UUU", os.getcwd())
-    save_folder = "tests/tmp_testing/popv_test_results/"
-    fn = save_folder + "annotated_query.h5ad"
-    if exists(save_folder + fn):
-        return anndata.read(save_folder + fn)
+# Enable cuml in popv.setting depending on pytest flag
+@pytest.fixture(autouse=True)
+def configure_popv(pytestconfig):
+    """Configure popv.settings based on pytest flag."""
+    if pytestconfig.getoption("--cuml"):
+        popv.settings.cuml = True
+    popv.settings.accelerator = pytestconfig.getoption("--accelerator")
 
-    ref_adata_path = "resources/dataset/test/ts_lung_subset.h5ad"
-    ref_adata = sc.read(ref_adata_path)
+
+def _get_test_anndata(
+    cl_obo_folder="resources/ontology/",
+    prediction_mode="retrain",
+    ref_adata=None,
+    output_folder="tests/tmp_testing/popv_test_results/",
+):
+    if ref_adata is None:
+        ref_adata_path = "resources/dataset/test/ts_lung_subset.h5ad"
+        ref_adata = sc.read(ref_adata_path)
+        ref_layer_key = None
+    else:
+        ref_adata = ref_adata
+        ref_layer_key = "scvi_counts"
 
     query_adata_path = "resources/dataset/test/lca_subset.h5ad"
     query_adata = sc.read(query_adata_path)
@@ -31,28 +42,21 @@ def _get_test_anndata(cl_obo_folder="resources/ontology/", mode="retrain"):
     n_samples_per_label = np.max((min_celltype_size, 20))
 
     query_batch_key = None
-
-    # Lesser used parameters
-    query_labels_key = None
     unknown_celltype_label = "unknown"
-    hvg = 4000 if mode == "retrain" else None
+    hvg = 4000 if prediction_mode == "retrain" else None
 
     adata = Process_Query(
         query_adata,
         ref_adata,
         query_batch_key=query_batch_key,
-        query_labels_key=query_labels_key,
         ref_labels_key=ref_labels_key,
         ref_batch_key=ref_batch_key,
+        ref_layer_key=ref_layer_key,
         unknown_celltype_label=unknown_celltype_label,
-        save_path_trained_models=save_folder,
+        save_path_trained_models=output_folder,
         cl_obo_folder=cl_obo_folder,
-        prediction_mode=mode,
+        prediction_mode=prediction_mode,
         n_samples_per_label=n_samples_per_label,
-        compute_embedding=True,
-        return_probabilities=True,
-        accelerator="cpu",
-        devices="auto",
         hvg=hvg,
     )
 
@@ -62,11 +66,11 @@ def _get_test_anndata(cl_obo_folder="resources/ontology/", mode="retrain"):
 def test_bbknn():
     """Test BBKNN algorithm."""
     adata = _get_test_anndata().adata
-    current_method = popv.algorithms.knn_on_bbknn()
+    current_method = popv.algorithms.knn_on_bbknn(method_kwargs={"use_annoy": True})
 
-    current_method.compute_integration(adata)
-    current_method.predict(adata)
-    current_method.compute_embedding(adata)
+    current_method._compute_integration(adata)
+    current_method._predict(adata)
+    current_method._compute_embedding(adata)
 
     assert "popv_knn_on_bbknn_prediction" in adata.obs.columns
     assert not adata.obs["popv_knn_on_bbknn_prediction"].isnull().any()
@@ -78,24 +82,24 @@ def test_onclass():
     current_method = popv.algorithms.onclass(
         max_iter=2,
     )
-    current_method.compute_integration(adata)
-    current_method.predict(adata)
-    current_method.compute_embedding(adata)
+    current_method._compute_integration(adata)
+    current_method._predict(adata)
+    current_method._compute_embedding(adata)
 
     assert "popv_onclass_prediction" in adata.obs.columns
     assert not adata.obs["popv_onclass_prediction"].isnull().any()
 
 
-def test_rf():
+def test_xgboost():
     """Test Random Forest algorithm."""
     adata = _get_test_anndata().adata
-    current_method = popv.algorithms.rf()
-    current_method.compute_integration(adata)
-    current_method.predict(adata)
-    current_method.compute_embedding(adata)
+    current_method = popv.algorithms.xgboost()
+    current_method._compute_integration(adata)
+    current_method._predict(adata)
+    current_method._compute_embedding(adata)
 
-    assert "popv_rf_prediction" in adata.obs.columns
-    assert not adata.obs["popv_rf_prediction"].isnull().any()
+    assert "popv_xgboost_prediction" in adata.obs.columns
+    assert not adata.obs["popv_xgboost_prediction"].isnull().any()
 
 
 def test_scanorama():
@@ -103,9 +107,9 @@ def test_scanorama():
     adata = _get_test_anndata().adata
     current_method = popv.algorithms.knn_on_scanorama()
 
-    current_method.compute_integration(adata)
-    current_method.predict(adata)
-    current_method.compute_embedding(adata)
+    current_method._compute_integration(adata)
+    current_method._predict(adata)
+    current_method._compute_embedding(adata)
 
     assert "popv_knn_on_scanorama_prediction" in adata.obs.columns
     assert not adata.obs["popv_knn_on_scanorama_prediction"].isnull().any()
@@ -116,9 +120,9 @@ def test_harmony():
     adata = _get_test_anndata().adata
     current_method = popv.algorithms.knn_on_harmony()
 
-    current_method.compute_integration(adata)
-    current_method.predict(adata)
-    current_method.compute_embedding(adata)
+    current_method._compute_integration(adata)
+    current_method._predict(adata)
+    current_method._compute_embedding(adata)
 
     assert "popv_knn_on_harmony_prediction" in adata.obs.columns
     assert not adata.obs["popv_knn_on_harmony_prediction"].isnull().any()
@@ -127,13 +131,11 @@ def test_harmony():
 def test_scanvi():
     """Test SCANVI algorithm."""
     adata = _get_test_anndata().adata
-    current_method = popv.algorithms.scanvi(
-        n_epochs_unsupervised=5,
-    )
+    current_method = popv.algorithms.scanvi(train_kwargs={"max_epochs": 2, "max_epochs_unsupervised": 1})
 
-    current_method.compute_integration(adata)
-    current_method.predict(adata)
-    current_method.compute_embedding(adata)
+    current_method._compute_integration(adata)
+    current_method._predict(adata)
+    current_method._compute_embedding(adata)
 
     assert "popv_scanvi_prediction" in adata.obs.columns
     assert not adata.obs["popv_scanvi_prediction"].isnull().any()
@@ -142,11 +144,11 @@ def test_scanvi():
 def test_scvi():
     """Test SCVI algorithm."""
     adata = _get_test_anndata().adata
-    current_method = popv.algorithms.knn_on_scvi(max_epochs=3)
+    current_method = popv.algorithms.knn_on_scvi(train_kwargs={"max_epochs": 3})
 
-    current_method.compute_integration(adata)
-    current_method.predict(adata)
-    current_method.compute_embedding(adata)
+    current_method._compute_integration(adata)
+    current_method._predict(adata)
+    current_method._compute_embedding(adata)
 
     assert "popv_knn_on_scvi_prediction" in adata.obs.columns
     assert not adata.obs["popv_knn_on_scvi_prediction"].isnull().any()
@@ -157,9 +159,9 @@ def test_svm():
     adata = _get_test_anndata().adata
     current_method = popv.algorithms.svm()
 
-    current_method.compute_integration(adata)
-    current_method.predict(adata)
-    current_method.compute_embedding(adata)
+    current_method._compute_integration(adata)
+    current_method._predict(adata)
+    current_method._compute_embedding(adata)
 
     assert "popv_svm_prediction" in adata.obs.columns
     assert not adata.obs["popv_svm_prediction"].isnull().any()
@@ -170,9 +172,9 @@ def test_celltypist():
     adata = _get_test_anndata().adata
     current_method = popv.algorithms.celltypist()
 
-    current_method.compute_integration(adata)
-    current_method.predict(adata)
-    current_method.compute_embedding(adata)
+    current_method._compute_integration(adata)
+    current_method._predict(adata)
+    current_method._compute_embedding(adata)
 
     assert "popv_celltypist_prediction" in adata.obs.columns
     assert not adata.obs["popv_celltypist_prediction"].isnull().any()
@@ -182,24 +184,28 @@ def test_annotation():
     """Test Annotation and Plotting pipeline."""
     adata = _get_test_anndata().adata
     popv.annotation.annotate_data(
-        adata, methods=["svm", "rf"], save_path="tests/tmp_testing/popv_test_results/"
+        adata,
+        save_path="tests/tmp_testing/popv_test_results/",
+        methods_kwargs={
+            "knn_on_bbknn": {"method_kwargs": {"use_annoy": True}},
+            "knn_on_scvi": {"train_kwargs": {"max_epochs": 3}},
+            "scanvi": {"train_kwargs": {"max_epochs": 3, "max_epochs_unsupervised": 1}},
+        },
     )
     popv.visualization.agreement_score_bar_plot(adata)
     popv.visualization.prediction_score_bar_plot(adata)
-    popv.visualization.make_agreement_plots(
-        adata, prediction_keys=adata.uns["prediction_keys"], show=False
-    )
+    popv.visualization.make_agreement_plots(adata, prediction_keys=adata.uns["prediction_keys"], show=False)
     popv.visualization.celltype_ratio_bar_plot(adata)
-    obo_fn = "resources/ontology/cl.obo"
+    obo_fn = "resources/ontology/cl_popv.json"
     _accuracy._ontology_accuracy(
         adata[adata.obs["_dataset"] == "ref"],
-        obofile=obo_fn,
+        obo_file=obo_fn,
         gt_key="cell_ontology_class",
         pred_key="popv_prediction",
     )
     _accuracy._fine_ontology_sibling_accuracy(
         adata[adata.obs["_dataset"] == "ref"],
-        obofile=obo_fn,
+        obo_file=obo_fn,
         gt_key="cell_ontology_class",
         pred_key="popv_prediction",
     )
@@ -207,31 +213,48 @@ def test_annotation():
     assert "popv_majority_vote_prediction" in adata.obs.columns
     assert not adata.obs["popv_majority_vote_prediction"].isnull().any()
 
-    adata = _get_test_anndata(mode="inference").adata
+    adata = _get_test_anndata(ref_adata=adata[adata.obs["_dataset"] == "ref"], prediction_mode="inference").adata
     popv.annotation.annotate_data(
-        adata, save_path="tests/tmp_testing/popv_test_results/"
+        adata,
+        save_path="tests/tmp_testing/popv_test_results/",
+        methods_kwargs={
+            "knn_on_bbknn": {"method_kwargs": {"use_annoy": True}},
+            "knn_on_scvi": {"train_kwargs": {"max_epochs": 3}},
+            "scanvi": {"train_kwargs": {"max_epochs": 3}},
+        },
     )
 
-    adata = _get_test_anndata(mode="fast").adata
+    adata = _get_test_anndata(prediction_mode="inference").adata
     popv.annotation.annotate_data(
-        adata, save_path="tests/tmp_testing/popv_test_results/"
+        adata,
+        save_path="tests/tmp_testing/popv_test_results/",
+        methods_kwargs={
+            "knn_on_bbknn": {"method_kwargs": {"use_annoy": True}},
+            "knn_on_scvi": {"train_kwargs": {"max_epochs": 3}},
+            "scanvi": {"train_kwargs": {"max_epochs": 3}},
+        },
+    )
+
+    adata = _get_test_anndata(prediction_mode="fast").adata
+    popv.annotation.annotate_data(
+        adata,
+        save_path="tests/tmp_testing/popv_test_results/",
+        methods_kwargs={
+            "knn_on_bbknn": {"method_kwargs": {"use_annoy": True}},
+            "knn_on_scvi": {"train_kwargs": {"max_epochs": 3}},
+            "scanvi": {"train_kwargs": {"max_epochs": 3}},
+        },
     )
 
 
 def test_annotation_no_ontology():
     """Test Annotation and Plotting pipeline without ontology."""
     adata = _get_test_anndata(cl_obo_folder=False).adata
-    popv.annotation.annotate_data(
-        adata, methods=["svm", "rf"], save_path="tests/tmp_testing/popv_test_results/"
-    )
+    popv.annotation.annotate_data(adata, methods=["svm", "rf"], save_path="tests/tmp_testing/popv_test_results/")
     popv.visualization.agreement_score_bar_plot(adata)
     popv.visualization.prediction_score_bar_plot(adata)
-    popv.visualization.make_agreement_plots(
-        adata, prediction_keys=adata.uns["prediction_keys"]
-    )
-    popv.visualization.celltype_ratio_bar_plot(
-        adata, save_folder="tests/tmp_testing/popv_test_results/"
-    )
+    popv.visualization.make_agreement_plots(adata, prediction_keys=adata.uns["prediction_keys"])
+    popv.visualization.celltype_ratio_bar_plot(adata, save_folder="tests/tmp_testing/popv_test_results/")
     popv.visualization.celltype_ratio_bar_plot(adata, normalize=False)
     adata.obs["empty_columns"] = "a"
     input_data = adata.obs[["empty_columns", "popv_rf_prediction"]].values.tolist()
@@ -240,14 +263,63 @@ def test_annotation_no_ontology():
     assert "popv_majority_vote_prediction" in adata.obs.columns
     assert not adata.obs["popv_majority_vote_prediction"].isnull().any()
 
+    adata = _get_test_anndata(cl_obo_folder=False, prediction_mode="inference").adata
+    popv.annotation.annotate_data(adata, methods=["svm", "rf"], save_path=None)
 
-if __name__ == "__main__":
-    test_bbknn()
-    test_onclass()
-    test_rf()
-    test_scanorama()
-    test_scanvi()
-    test_scvi()
-    test_svm()
-    test_annotation()
-    test_annotation_no_ontology()
+    assert "popv_majority_vote_prediction" in adata.obs.columns
+    assert not adata.obs["popv_majority_vote_prediction"].isnull().any()
+
+    adata = _get_test_anndata(cl_obo_folder=False, prediction_mode="fast").adata
+    popv.annotation.annotate_data(adata, methods=["svm", "rf"], save_path=None)
+
+    assert "popv_majority_vote_prediction" in adata.obs.columns
+    assert not adata.obs["popv_majority_vote_prediction"].isnull().any()
+
+
+def test_annotation_hub(private):
+    """Test Annotation and Plotting pipeline without ontology."""
+    output_folder = "tests/tmp_testing/popv_test_results_hub/"
+    adata = _get_test_anndata(output_folder=output_folder).adata
+    popv.annotation.annotate_data(
+        adata,
+        save_path="tests/tmp_testing/popv_test_results/",
+        methods_kwargs={
+            "knn_on_bbknn": {"method_kwargs": {"use_annoy": True}},
+            "knn_on_scvi": {"train_kwargs": {"max_epochs": 3}},
+            "scanvi": {"train_kwargs": {"max_epochs": 3, "max_epochs_unsupervised": 1}},
+        },
+    )
+    minified_adata = popv._utils.get_minified_adata(adata)
+    minified_adata.write(f"{output_folder}/minified_ref_adata.h5ad")
+    popv.hub.create_criticism_report(
+        adata,
+        save_folder=output_folder,
+    )
+    model_json = {
+        "description": "Tabula Sapiens is a benchmark, first-draft human cell atlas of over 1.1M cells from 28 organs of 24 normal human subjects. This work is the product of the Tabula Sapiens Consortium. Taking the organs from the same individual controls for genetic background, age, environment, and epigenetic effects, and allows detailed analysis and comparison of cell types that are shared between tissues.",
+        "tissues": ["test"],
+        "cellxgene_url": "test",
+        "references": "Tabula Sapiens reveals transcription factor expression, senescence effects, and sex-specific features in cell types from 28 human organs and tissues, The Tabula Sapiens Consortium; bioRxiv, doi: https://doi.org/10.1101/2024.12.03.626516",
+        "license_info": "cc-by-4.0",
+    }
+    hmch = popv.hub.HubModelCardHelper.from_dir(output_folder, anndata_version=anndata.__version__, **model_json)
+    hm = popv.hub.HubMetadata.from_anndata(
+        adata,
+        popv_version=popv.__version__,
+        anndata_version=anndata.__version__,
+        cellxgene_url=model_json["cellxgene_url"],
+    )
+    hmo = popv.hub.HubModel(output_folder, model_card=hmch, metadata=hm)
+    if private:
+        hmo.push_to_huggingface_hub(
+            repo_name="popV/test",
+            repo_token=None,
+            repo_create=True,
+            repo_create_kwargs={"exist_ok": True},
+        )
+    hmo = popv.hub.HubModel.pull_from_huggingface_hub(
+        "popV/test", cache_dir="tests/tmp_testing/popv_test_results_hub_pulled/"
+    )
+    query_adata_path = "resources/dataset/test/lca_subset.h5ad"
+    query_adata = sc.read(query_adata_path)
+    hmo.annotate_data(query_adata, prediction_mode="fast")

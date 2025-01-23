@@ -69,7 +69,7 @@ complexities:
     embedding).
 
 A user-defined selection of classification algorithms can be defined when
-calling \[annotate_data\]([popv.annotation.annotate_data](https://github.com/YosefLab/popV/tree/main/popv/annotation.py). Additionally, advanced users
+calling [annotate_data](https://github.com/YosefLab/popV/tree/main/popv/annotation.py). Additionally, advanced users
 can define non-standard parameters for the integration methods and classifiers.
 
 ## Output
@@ -86,8 +86,8 @@ We found that disagreement of a single expert is still highly reliable, while
 disagreement of more than two classifiers signifies less reliable results. The
 aim of PopV is not to fully annotate a dataset but to highlight cells that may
 require further manual annotation. PopV also outputs UMAP embeddings of all
-integrated latent spaces if `_settings.compute_embedding == True` and computes
-certainties for every used classifier if `_settings.return_probabilities == True`.
+integrated latent spaces if `popv.settings.compute_embedding == True` and computes
+certainties for every used classifier if `popv.settings.return_probabilities == True`.
 
 ## Installation
 

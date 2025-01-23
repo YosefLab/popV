@@ -6,7 +6,7 @@
 [![Coverage](https://codecov.io/gh/YosefLab/popv/branch/main/graph/badge.svg?token=KuSsL5q3l7)](https://codecov.io/gh/YosefLab/popv)
 [![Code Style](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/python/black)
 [![Downloads](https://pepy.tech/badge/popv)](https://pepy.tech/project/popv)
-[![Docs][docs-badge]][[docs-link](https://popv-docs.readthedocs.io/en/latest/)]
+[![Docs](https://readthedocs.org/projects/popv/badge/?version=latest)](https://popv-docs.readthedocs.io/en/latest/)
 
 PopV uses popular vote of a variety of cell-type transfer tools to classify
 cell-types in a query dataset based on a test dataset. Using this variety of

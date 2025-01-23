@@ -49,13 +49,13 @@ nearest neighbors.
 
 Pretrained models are stored on
 [HuggingFace](https://huggingface.co/popV) and can be downloaded by using
-[pull_from_huggingface_hub](popV.popv.hub.HubModel.pull_from_huggingface_hub)
+[pull_from_huggingface_hub]([popV.popv.](https://github.com/YosefLab/popV/tree/main/popv/hub/_model.py)
 that returns a class and can annotate
-query data by calling the [annotate_data](popv.hub.HubModel.annotate_data)
+query data by calling the [annotate_data]([popv.hub.HubModel.annotate_data](https://github.com/YosefLab/popV/tree/main/popv/hub/_model.py)
 method of that class.
 
 All input parameters are defined during initial call to
-[Process_Query](popv.preprocessing.Process_Query) and are stored in the uns
+[Process_Query]([popv.preprocessing.Process_Query](https://github.com/YosefLab/popV/tree/main/popv/preprocessing.py) and are stored in the uns
 field of the generated AnnData object. PopV has three levels of prediction
 complexities:
 
@@ -69,7 +69,7 @@ complexities:
     embedding).
 
 A user-defined selection of classification algorithms can be defined when
-calling [annotate_data](popv.annotation.annotate_data). Additionally, advanced users
+calling [annotate_data]([popv.annotation.annotate_data](https://github.com/YosefLab/popV/tree/main/popv/annotation.py). Additionally, advanced users
 can define non-standard parameters for the integration methods and classifiers.
 
 ## Output
@@ -109,7 +109,7 @@ pip install git+https://github.com/YosefLab/popV
 
 We provide an example notebook in Google Colab:
 
-- [Tutorial demonstrating use of Tabula sapiens as a reference](tutorials/notebooks/tabula_sapiens_tutorial.ipynb)
+- [Tutorial demonstrating use of Tabula sapiens as a reference](https://github.com/YosefLab/popV/tree/main/docs/tutorials/notebooks/tabula_sapiens_tutorial.ipynb)
 
 This notebook will guide you through annotating a dataset based on the annotated
 [Tabula sapiens reference](https://tabula-sapiens-portal.ds.czbiohub.org) and

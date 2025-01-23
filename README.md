@@ -36,7 +36,7 @@ All algorithms are implemented as a class in
 [popv/algorithms](https://github.com/YosefLab/popV/tree/main/popv/algorithms).
 
 New classifiers should inherit from
-[BaseAlgorithm]([popV/popv/algorithms/BaseAlgorithm](https://github.com/YosefLab/popV/tree/main/popv/algorithms/_base_algorithm.py). Adding a new class with the
+\[BaseAlgorithm\]([popV/popv/algorithms/BaseAlgorithm](https://github.com/YosefLab/popV/tree/main/popv/algorithms/_base_algorithm.py). Adding a new class with the
 methods defined in this class and adding it to [AlgorithmsNT](popV/popv/annotation/AlgorithmsNT)
 will tell PopV to include this class into its
 classifiers and will use the new classifier as another expert.

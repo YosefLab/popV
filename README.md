@@ -36,8 +36,8 @@ All algorithms are implemented as a class in
 [popv/algorithms](https://github.com/YosefLab/popV/tree/main/popv/algorithms).
 
 New classifiers should inherit from
-[BaseAlgorithm](popv/popv/algorithms/BaseAlgorithm). Adding a new class with the
-methods defined in this class and adding it to [AlgorithmsNT](popv/annotation/AlgorithmsNT)
+[BaseAlgorithm](popV/popv/algorithms/BaseAlgorithm). Adding a new class with the
+methods defined in this class and adding it to [AlgorithmsNT](popV/popv/annotation/AlgorithmsNT)
 will tell PopV to include this class into its
 classifiers and will use the new classifier as another expert.
 
@@ -49,7 +49,7 @@ nearest neighbors.
 
 Pretrained models are stored on
 [HuggingFace](https://huggingface.co/popV) and can be downloaded by using
-[pull_from_huggingface_hub](popv.hub.HubModel.pull_from_huggingface_hub)
+[pull_from_huggingface_hub](popV.popv.hub.HubModel.pull_from_huggingface_hub)
 that returns a class and can annotate
 query data by calling the [annotate_data](popv.hub.HubModel.annotate_data)
 method of that class.

@@ -55,7 +55,7 @@ query data by calling the [annotate_data](https://github.com/YosefLab/popV/tree/
 method of that class.
 
 All input parameters are defined during initial call to
-\[Process_Query\]([popv.preprocessing.Process_Query](https://github.com/YosefLab/popV/tree/main/popv/preprocessing.py) and are stored in the uns
+[Process_Query](https://github.com/YosefLab/popV/tree/main/popv/preprocessing.py) and are stored in the uns
 field of the generated AnnData object. PopV has three levels of prediction
 complexities:
 

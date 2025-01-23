@@ -36,15 +36,28 @@ Currently implemented algorithms are:
 All algorithms are implemented as a class in
 [popv/algorithms](https://github.com/YosefLab/popV/tree/main/popv/algorithms).
 
+New classifiers should inherit from
+[BaseAlgorithm](https://github.com/YosefLab/popV/tree/main/popv/algorithms/_base_algorithm.py). Adding a new class with the
+methods defined in this class and adding it to [AlgorithmsNT](https://github.com/YosefLab/popV/tree/main/popv/annotation.py)
+will tell PopV to include this class into its
+classifiers and will use the new classifier as another expert.
+
 All algorithms that allow for pre-training are pre-trained. This excludes by
 design BBKNN, Harmony and SCANORAMA as all construct a new embedding space.
 To provide pretrained methods for BBKNN and Harmony, we use a nearest-neighbor
 index in PCA space and position query cells at the average position of the 5
 nearest neighbors.
 
-Pretrained models are stored on [HuggingFace](https://huggingface.co/popV).
+Pretrained models are stored on
+[HuggingFace](https://huggingface.co/popV) and can be downloaded by using
+[pull_from_huggingface_hub](popv.hub.HubModel.pull_from_huggingface_hub)
+that returns a class and can annotate
+query data by calling the [annotate_data](popv.hub.HubModel.annotate_data)
+method of that class.
 
-PopV has three levels of prediction
+All input parameters are defined during initial call to
+[Process_Query](popv.preprocessing.Process_Query) and are stored in the uns
+field of the generated AnnData object. PopV has three levels of prediction
 complexities:
 
 - **retrain**: Will train all classifiers from scratch. For 50k cells, this
@@ -55,6 +68,10 @@ complexities:
 - **fast**: Uses only methods with pretrained classifiers to annotate only
     query cells. For 50k cells, this takes 5 minutes without a GPU (without UMAP
     embedding).
+
+A user-defined selection of classification algorithms can be defined when
+calling [annotate_data](popv.annotation.annotate_data). Additionally, advanced users
+can define non-standard parameters for the integration methods and classifiers.
 
 ## Output
 
@@ -80,7 +97,7 @@ package. OnClass files for annotation based on Tabula sapiens are deposited in
 `popv/resources/ontology`. We use [Cell Ontology](https://obofoundry.org/ontology/cl.html)
 as an ontology throughout our experiments. PopV will automatically look for the
 ontology in this folder. If you want to provide your user-edited ontology,
-our tutorials demonstrate how to generate the Natural
+[our tutorial](tutorials.notebooks.add_celltypes_ontology.ipynb) demonstrates how to generate the Natural
 Language Model used in OnClass for this user-defined ontology.
 
 ```bash
@@ -93,7 +110,7 @@ pip install git+https://github.com/YosefLab/popV
 
 We provide an example notebook in Google Colab:
 
-- [Tutorial demonstrating use of Tabula sapiens as a reference](docs/tutorials/notebooks/tabula_sapiens_tutorial.ipynb)
+- [Tutorial demonstrating use of Tabula sapiens as a reference](tutorials.notebooks.tabula_sapiens_tutorial.ipynb)
 
 This notebook will guide you through annotating a dataset based on the annotated
 [Tabula sapiens reference](https://tabula-sapiens-portal.ds.czbiohub.org) and

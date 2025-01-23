@@ -63,6 +63,55 @@ def _get_test_anndata(
     return adata
 
 
+def test_annotation_hub(private):
+    """Test Annotation and Plotting pipeline without ontology."""
+    output_folder = "tests/tmp_testing/popv_test_results_hub/"
+    adata = _get_test_anndata(output_folder=output_folder).adata
+    popv.annotation.annotate_data(
+        adata,
+        save_path="tests/tmp_testing/popv_test_results/",
+        methods_kwargs={
+            "KNN_BBKNN": {"method_kwargs": {"use_annoy": True}},
+            "KNN_SCVI": {"train_kwargs": {"max_epochs": 3}},
+            "SCANVI_POPV": {"train_kwargs": {"max_epochs": 3, "max_epochs_unsupervised": 1}},
+        },
+    )
+    minified_adata = popv._utils.get_minified_adata(adata)
+    minified_adata.write(f"{output_folder}/minified_ref_adata.h5ad")
+    popv.hub.create_criticism_report(
+        adata,
+        save_folder=output_folder,
+    )
+    model_json = {
+        "description": "Tabula Sapiens is a benchmark, first-draft human cell atlas of over 1.1M cells from 28 organs of 24 normal human subjects. This work is the product of the Tabula Sapiens Consortium. Taking the organs from the same individual controls for genetic background, age, environment, and epigenetic effects, and allows detailed analysis and comparison of cell types that are shared between tissues.",
+        "tissues": ["test"],
+        "cellxgene_url": "test",
+        "references": "Tabula Sapiens reveals transcription factor expression, senescence effects, and sex-specific features in cell types from 28 human organs and tissues, The Tabula Sapiens Consortium; bioRxiv, doi: https://doi.org/10.1101/2024.12.03.626516",
+        "license_info": "cc-by-4.0",
+    }
+    hmch = popv.hub.HubModelCardHelper.from_dir(output_folder, anndata_version=anndata.__version__, **model_json)
+    hm = popv.hub.HubMetadata.from_anndata(
+        adata,
+        popv_version=popv.__version__,
+        anndata_version=anndata.__version__,
+        cellxgene_url=model_json["cellxgene_url"],
+    )
+    hmo = popv.hub.HubModel(output_folder, model_card=hmch, metadata=hm)
+    if private:
+        hmo.push_to_huggingface_hub(
+            repo_name="popV/test",
+            repo_token=None,
+            repo_create=True,
+            repo_create_kwargs={"exist_ok": True},
+        )
+    hmo = popv.hub.HubModel.pull_from_huggingface_hub(
+        "popV/test", cache_dir="tests/tmp_testing/popv_test_results_hub_pulled/"
+    )
+    query_adata_path = "resources/dataset/test/lca_subset.h5ad"
+    query_adata = sc.read(query_adata_path)
+    hmo.annotate_data(query_adata, prediction_mode="fast")
+
+
 def test_bbknn():
     """Test BBKNN algorithm."""
     adata = _get_test_anndata().adata
@@ -276,52 +325,3 @@ def test_annotation_no_ontology():
 
     assert "popv_majority_vote_prediction" in adata.obs.columns
     assert not adata.obs["popv_majority_vote_prediction"].isnull().any()
-
-
-def test_annotation_hub(private):
-    """Test Annotation and Plotting pipeline without ontology."""
-    output_folder = "tests/tmp_testing/popv_test_results_hub/"
-    adata = _get_test_anndata(output_folder=output_folder).adata
-    popv.annotation.annotate_data(
-        adata,
-        save_path="tests/tmp_testing/popv_test_results/",
-        methods_kwargs={
-            "KNN_BBKNN": {"method_kwargs": {"use_annoy": True}},
-            "KNN_SCVI": {"train_kwargs": {"max_epochs": 3}},
-            "SCANVI_POPV": {"train_kwargs": {"max_epochs": 3, "max_epochs_unsupervised": 1}},
-        },
-    )
-    minified_adata = popv._utils.get_minified_adata(adata)
-    minified_adata.write(f"{output_folder}/minified_ref_adata.h5ad")
-    popv.hub.create_criticism_report(
-        adata,
-        save_folder=output_folder,
-    )
-    model_json = {
-        "description": "Tabula Sapiens is a benchmark, first-draft human cell atlas of over 1.1M cells from 28 organs of 24 normal human subjects. This work is the product of the Tabula Sapiens Consortium. Taking the organs from the same individual controls for genetic background, age, environment, and epigenetic effects, and allows detailed analysis and comparison of cell types that are shared between tissues.",
-        "tissues": ["test"],
-        "cellxgene_url": "test",
-        "references": "Tabula Sapiens reveals transcription factor expression, senescence effects, and sex-specific features in cell types from 28 human organs and tissues, The Tabula Sapiens Consortium; bioRxiv, doi: https://doi.org/10.1101/2024.12.03.626516",
-        "license_info": "cc-by-4.0",
-    }
-    hmch = popv.hub.HubModelCardHelper.from_dir(output_folder, anndata_version=anndata.__version__, **model_json)
-    hm = popv.hub.HubMetadata.from_anndata(
-        adata,
-        popv_version=popv.__version__,
-        anndata_version=anndata.__version__,
-        cellxgene_url=model_json["cellxgene_url"],
-    )
-    hmo = popv.hub.HubModel(output_folder, model_card=hmch, metadata=hm)
-    if private:
-        hmo.push_to_huggingface_hub(
-            repo_name="popV/test",
-            repo_token=None,
-            repo_create=True,
-            repo_create_kwargs={"exist_ok": True},
-        )
-    hmo = popv.hub.HubModel.pull_from_huggingface_hub(
-        "popV/test", cache_dir="tests/tmp_testing/popv_test_results_hub_pulled/"
-    )
-    query_adata_path = "resources/dataset/test/lca_subset.h5ad"
-    query_adata = sc.read(query_adata_path)
-    hmo.annotate_data(query_adata, prediction_mode="fast")

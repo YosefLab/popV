@@ -86,7 +86,7 @@ Language Model used in OnClass for this user-defined ontology.
 ```bash
 conda create -n yourenv python=3.12
 conda activate yourenv
-pip install git+https://github.com/YosefLab/popV
+pip install popv
 ```
 
 ## Example notebook

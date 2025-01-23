@@ -36,8 +36,8 @@ All algorithms are implemented as a class in
 [popv/algorithms](https://github.com/YosefLab/popV/tree/main/popv/algorithms).
 
 New classifiers should inherit from
-\[BaseAlgorithm\]([popV/popv/algorithms/BaseAlgorithm](https://github.com/YosefLab/popV/tree/main/popv/algorithms/_base_algorithm.py). Adding a new class with the
-methods defined in this class and adding it to [AlgorithmsNT](popV/popv/annotation/AlgorithmsNT)
+[BaseAlgorithm](https://github.com/YosefLab/popV/tree/main/popv/algorithms/_base_algorithm.py). Adding a new class with the
+methods defined in this class and adding it to [AlgorithmsNT]([popV/](https://github.com/YosefLab/popV/tree/main/popv/annotation.py)
 will tell PopV to include this class into its
 classifiers and will use the new classifier as another expert.
 
@@ -49,9 +49,9 @@ nearest neighbors.
 
 Pretrained models are stored on
 [HuggingFace](https://huggingface.co/popV) and can be downloaded by using
-\[pull_from_huggingface_hub\]([popV.popv.](https://github.com/YosefLab/popV/tree/main/popv/hub/_model.py)
+[pull_from_huggingface_hub](https://github.com/YosefLab/popV/tree/main/popv/hub/_model.py)
 that returns a class and can annotate
-query data by calling the \[annotate_data\]([popv.hub.HubModel.annotate_data](https://github.com/YosefLab/popV/tree/main/popv/hub/_model.py)
+query data by calling the [annotate_data](https://github.com/YosefLab/popV/tree/main/popv/hub/_model.py)
 method of that class.
 
 All input parameters are defined during initial call to

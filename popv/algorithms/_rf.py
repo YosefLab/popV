@@ -12,7 +12,7 @@ from popv import settings
 from popv.algorithms._base_algorithm import BaseAlgorithm
 
 
-class RF(BaseAlgorithm):
+class Random_Forest(BaseAlgorithm):
     """
     Class to compute Random forest classifier.
 
@@ -20,16 +20,19 @@ class RF(BaseAlgorithm):
     ----------
     batch_key
         Key in obs field of adata for batch information.
+        Default is "_batch_annotation".
     labels_key
         Key in obs field of adata for cell-type information.
+        Default is "_labels_annotation".
     layer_key
         Key in layers field of adata used for classification. By default uses 'X' (log1p10K).
     result_key
         Key in obs in which celltype annotation results are stored.
+        Default is "popv_rf_prediction".
     enable_cuml
         Enable cuml, which currently doesn't support weighting. Default to popv.settings.cuml.
     classifier_dict
-        Dictionary to supply non-default values for RF classifier. Options at sklearn.ensemble.RandomForestClassifier.
+        Dictionary to supply non-default values for RF classifier. Options at :class:`sklearn.ensemble.RandomForestClassifier`.
     """
 
     def __init__(
@@ -45,9 +48,8 @@ class RF(BaseAlgorithm):
             batch_key=batch_key,
             labels_key=labels_key,
             result_key=result_key,
-            layer_key=layer_key,
         )
-
+        self.layer_key = layer_key
         self.classifier_dict = {
             "class_weight": "balanced_subsample",
             "max_features": 200,
@@ -57,7 +59,15 @@ class RF(BaseAlgorithm):
             self.classifier_dict.update(classifier_dict)
         self.enable_cuml = enable_cuml
 
-    def _predict(self, adata):
+    def predict(self, adata):
+        """
+        Predict celltypes using Random Forest.
+
+        Parameters
+        ----------
+        adata
+            Anndata object. Results are stored in adata.obs[self.result_key].
+        """
         logging.info(f'Computing random forest classifier. Storing prediction in adata.obs["{self.result_key}"]')
 
         test_x = adata[adata.obs["_predict_cells"] == "relabel"].layers[self.layer_key] if self.layer_key else adata.X

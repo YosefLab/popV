@@ -26,6 +26,10 @@ class Config:
     >>> import logging
     >>> popv.settings.verbosity = logging.INFO
 
+    To set the logging directory
+
+    >>> popv.settings.logging_dir = "./popv_log/"
+
     To set the number of jobs to be used
 
     >>> popv.settings.n_jobs = 2
@@ -37,6 +41,18 @@ class Config:
     To enable cuml for rapid GPU based methods
 
     >>> popv.settings.cuml = True
+
+    To recompute embeddings instead of using NN lookup
+
+    >>> popv.settings.recompute_embeddings = True
+
+    To not return probabilities for all classifiers
+
+    >>> popv.settings.return_probabilities = False
+
+    To not compute UMAP embedding for integration methods
+
+    >>> popv.settings.compute_umap_embedding = False
 
     """
 
@@ -51,7 +67,7 @@ class Config:
         shard_size: int = 100000,
         recompute_embeddings: bool = False,
         return_probabilities: bool = True,
-        compute_embedding: bool = True,
+        compute_umap_embedding: bool = True,
     ):
         """Set up Config manager for PopV."""
         self.seed = seed
@@ -63,7 +79,7 @@ class Config:
         self.shard_size = shard_size
         self.recompute_embeddings = recompute_embeddings
         self.return_probabilities = return_probabilities
-        self.compute_embedding = compute_embedding
+        self.compute_umap_embedding = compute_umap_embedding
 
     @property
     def logging_dir(self) -> Path:
@@ -165,13 +181,13 @@ class Config:
         self._recompute_embeddings = recompute_embeddings
 
     @property
-    def compute_embedding(self) -> bool:
+    def compute_umap_embedding(self) -> bool:
         """Compute UMAP embedding for integration methods."""
-        return self._compute_embedding
+        return self._compute_umap_embedding
 
-    @compute_embedding.setter
-    def compute_embedding(self, compute_embedding: bool):
-        self._compute_embedding = compute_embedding
+    @compute_umap_embedding.setter
+    def compute_umap_embedding(self, compute_umap_embedding: bool):
+        self._compute_umap_embedding = compute_umap_embedding
 
     @property
     def return_probabilities(self) -> bool:

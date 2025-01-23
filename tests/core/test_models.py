@@ -66,25 +66,25 @@ def _get_test_anndata(
 def test_bbknn():
     """Test BBKNN algorithm."""
     adata = _get_test_anndata().adata
-    current_method = popv.algorithms.knn_on_bbknn(method_kwargs={"use_annoy": True})
+    current_method = popv.algorithms.KNN_BBKNN(method_kwargs={"use_annoy": True})
 
-    current_method._compute_integration(adata)
-    current_method._predict(adata)
-    current_method._compute_embedding(adata)
+    current_method.compute_integration(adata)
+    current_method.predict(adata)
+    current_method.compute_umap(adata)
 
-    assert "popv_knn_on_bbknn_prediction" in adata.obs.columns
-    assert not adata.obs["popv_knn_on_bbknn_prediction"].isnull().any()
+    assert "popv_knn_bbknn_prediction" in adata.obs.columns
+    assert not adata.obs["popv_knn_bbknn_prediction"].isnull().any()
 
 
 def test_onclass():
     """Test Onclass algorithm."""
     adata = _get_test_anndata().adata
-    current_method = popv.algorithms.onclass(
+    current_method = popv.algorithms.ONCLASS(
         max_iter=2,
     )
-    current_method._compute_integration(adata)
-    current_method._predict(adata)
-    current_method._compute_embedding(adata)
+    current_method.compute_integration(adata)
+    current_method.predict(adata)
+    current_method.compute_umap(adata)
 
     assert "popv_onclass_prediction" in adata.obs.columns
     assert not adata.obs["popv_onclass_prediction"].isnull().any()
@@ -93,10 +93,10 @@ def test_onclass():
 def test_xgboost():
     """Test Random Forest algorithm."""
     adata = _get_test_anndata().adata
-    current_method = popv.algorithms.xgboost()
-    current_method._compute_integration(adata)
-    current_method._predict(adata)
-    current_method._compute_embedding(adata)
+    current_method = popv.algorithms.XGboost()
+    current_method.compute_integration(adata)
+    current_method.predict(adata)
+    current_method.compute_umap(adata)
 
     assert "popv_xgboost_prediction" in adata.obs.columns
     assert not adata.obs["popv_xgboost_prediction"].isnull().any()
@@ -105,37 +105,37 @@ def test_xgboost():
 def test_scanorama():
     """Test Scanorama algorithm."""
     adata = _get_test_anndata().adata
-    current_method = popv.algorithms.knn_on_scanorama()
+    current_method = popv.algorithms.KNN_SCANORAMA()
 
-    current_method._compute_integration(adata)
-    current_method._predict(adata)
-    current_method._compute_embedding(adata)
+    current_method.compute_integration(adata)
+    current_method.predict(adata)
+    current_method.compute_umap(adata)
 
-    assert "popv_knn_on_scanorama_prediction" in adata.obs.columns
-    assert not adata.obs["popv_knn_on_scanorama_prediction"].isnull().any()
+    assert "popv_knn_scanorama_prediction" in adata.obs.columns
+    assert not adata.obs["popv_knn_scanorama_prediction"].isnull().any()
 
 
 def test_harmony():
     """Test Harmony algorithm."""
     adata = _get_test_anndata().adata
-    current_method = popv.algorithms.knn_on_harmony()
+    current_method = popv.algorithms.KNN_HARMONY()
 
-    current_method._compute_integration(adata)
-    current_method._predict(adata)
-    current_method._compute_embedding(adata)
+    current_method.compute_integration(adata)
+    current_method.predict(adata)
+    current_method.compute_umap(adata)
 
-    assert "popv_knn_on_harmony_prediction" in adata.obs.columns
-    assert not adata.obs["popv_knn_on_harmony_prediction"].isnull().any()
+    assert "popv_knn_harmony_prediction" in adata.obs.columns
+    assert not adata.obs["popv_knn_harmony_prediction"].isnull().any()
 
 
 def test_scanvi():
     """Test SCANVI algorithm."""
     adata = _get_test_anndata().adata
-    current_method = popv.algorithms.scanvi(train_kwargs={"max_epochs": 2, "max_epochs_unsupervised": 1})
+    current_method = popv.algorithms.SCANVI_POPV(train_kwargs={"max_epochs": 2, "max_epochs_unsupervised": 1})
 
-    current_method._compute_integration(adata)
-    current_method._predict(adata)
-    current_method._compute_embedding(adata)
+    current_method.compute_integration(adata)
+    current_method.predict(adata)
+    current_method.compute_umap(adata)
 
     assert "popv_scanvi_prediction" in adata.obs.columns
     assert not adata.obs["popv_scanvi_prediction"].isnull().any()
@@ -144,11 +144,11 @@ def test_scanvi():
 def test_scvi():
     """Test SCVI algorithm."""
     adata = _get_test_anndata().adata
-    current_method = popv.algorithms.knn_on_scvi(train_kwargs={"max_epochs": 3})
+    current_method = popv.algorithms.KNN_SCVI(train_kwargs={"max_epochs": 3})
 
-    current_method._compute_integration(adata)
-    current_method._predict(adata)
-    current_method._compute_embedding(adata)
+    current_method.compute_integration(adata)
+    current_method.predict(adata)
+    current_method.compute_umap(adata)
 
     assert "popv_knn_on_scvi_prediction" in adata.obs.columns
     assert not adata.obs["popv_knn_on_scvi_prediction"].isnull().any()
@@ -157,11 +157,11 @@ def test_scvi():
 def test_svm():
     """Test Support Vector Machine algorithm."""
     adata = _get_test_anndata().adata
-    current_method = popv.algorithms.svm()
+    current_method = popv.algorithms.Support_Vector()
 
-    current_method._compute_integration(adata)
-    current_method._predict(adata)
-    current_method._compute_embedding(adata)
+    current_method.compute_integration(adata)
+    current_method.predict(adata)
+    current_method.compute_umap(adata)
 
     assert "popv_svm_prediction" in adata.obs.columns
     assert not adata.obs["popv_svm_prediction"].isnull().any()
@@ -170,11 +170,11 @@ def test_svm():
 def test_celltypist():
     """Test Celltypist algorithm."""
     adata = _get_test_anndata().adata
-    current_method = popv.algorithms.celltypist()
+    current_method = popv.algorithms.CELLTYPIST()
 
-    current_method._compute_integration(adata)
-    current_method._predict(adata)
-    current_method._compute_embedding(adata)
+    current_method.compute_integration(adata)
+    current_method.predict(adata)
+    current_method.compute_umap(adata)
 
     assert "popv_celltypist_prediction" in adata.obs.columns
     assert not adata.obs["popv_celltypist_prediction"].isnull().any()
@@ -250,7 +250,9 @@ def test_annotation():
 def test_annotation_no_ontology():
     """Test Annotation and Plotting pipeline without ontology."""
     adata = _get_test_anndata(cl_obo_folder=False).adata
-    popv.annotation.annotate_data(adata, methods=["svm", "rf"], save_path="tests/tmp_testing/popv_test_results/")
+    popv.annotation.annotate_data(
+        adata, methods=["Support_Vector", "Random_Forest"], save_path="tests/tmp_testing/popv_test_results/"
+    )
     popv.visualization.agreement_score_bar_plot(adata)
     popv.visualization.prediction_score_bar_plot(adata)
     popv.visualization.make_agreement_plots(adata, prediction_keys=adata.uns["prediction_keys"])
@@ -264,13 +266,13 @@ def test_annotation_no_ontology():
     assert not adata.obs["popv_majority_vote_prediction"].isnull().any()
 
     adata = _get_test_anndata(cl_obo_folder=False, prediction_mode="inference").adata
-    popv.annotation.annotate_data(adata, methods=["svm", "rf"], save_path=None)
+    popv.annotation.annotate_data(adata, methods=["Support_Vector", "Random_Forest"], save_path=None)
 
     assert "popv_majority_vote_prediction" in adata.obs.columns
     assert not adata.obs["popv_majority_vote_prediction"].isnull().any()
 
     adata = _get_test_anndata(cl_obo_folder=False, prediction_mode="fast").adata
-    popv.annotation.annotate_data(adata, methods=["svm", "rf"], save_path=None)
+    popv.annotation.annotate_data(adata, methods=["Support_Vector", "Random_Forest"], save_path=None)
 
     assert "popv_majority_vote_prediction" in adata.obs.columns
     assert not adata.obs["popv_majority_vote_prediction"].isnull().any()
@@ -284,9 +286,9 @@ def test_annotation_hub(private):
         adata,
         save_path="tests/tmp_testing/popv_test_results/",
         methods_kwargs={
-            "knn_on_bbknn": {"method_kwargs": {"use_annoy": True}},
-            "knn_on_scvi": {"train_kwargs": {"max_epochs": 3}},
-            "scanvi": {"train_kwargs": {"max_epochs": 3, "max_epochs_unsupervised": 1}},
+            "KNN_BBKNN": {"method_kwargs": {"use_annoy": True}},
+            "KNN_SCVI": {"train_kwargs": {"max_epochs": 3}},
+            "SCANVI_POPV": {"train_kwargs": {"max_epochs": 3, "max_epochs_unsupervised": 1}},
         },
     )
     minified_adata = popv._utils.get_minified_adata(adata)

@@ -6,12 +6,13 @@ import os
 import warnings
 
 import anndata
-import faiss
+import joblib
 import numpy as np
 import pandas as pd
 import scanpy as sc
 import scipy.sparse as scp
 import torch
+from pynndescent import NNDescent
 from scanpy._utils import check_nonnegative_integers
 
 from popv import _utils
@@ -299,9 +300,9 @@ class Process_Query:
             sc.pp.scale(adata, max_value=10, layer="scaled", zero_center=False)
             sc.pp.pca(adata, layer="scaled", zero_center=False)
             reference_features = adata.obsm["X_pca"]
-            index = faiss.IndexFlatL2(reference_features.shape[1])
-            index.add(reference_features.astype(np.float32))
-            faiss.write_index(index, os.path.join(self.save_path_trained_models, "faiss_index.faiss"))
+            index = NNDescent(reference_features, n_neighbors=30, metric="euclidean")
+            index_path = os.path.join(self.save_path_trained_models, "pynndescent_index.joblib")
+            joblib.dump(index, open(index_path, "wb"))
         else:
             adata.obs["_labels_annotation"] = self.unknown_celltype_label
             adata.obs["_ref_subsample"] = False
@@ -345,11 +346,11 @@ class Process_Query:
             self.adata.obs.loc[self.adata.obs["_dataset"] == "query", "_predict_cells"] = "relabel"
 
         batch_count = self.adata.obs["_batch_annotation"].value_counts()
-        if batch_count.min() < 8:
+        if batch_count.min() < 11:
             logging.warning(
                 f"Batch size of {batch_count.min()} is small. This will lead to issues when using BBKNN. Removing small batches."
             )
-            valid_batches = batch_count[batch_count >= 8].index
+            valid_batches = batch_count[batch_count >= 11].index
             self.adata = self.adata[self.adata.obs["_batch_annotation"].isin(valid_batches)].copy()
 
         self.adata.obs["_labels_annotation"] = self.adata.obs["_labels_annotation"].astype("category")

@@ -4,7 +4,7 @@ import logging
 import os
 
 import celltypist
-import faiss
+import joblib
 import numpy as np
 import pandas as pd
 import scanpy as sc
@@ -22,14 +22,19 @@ class CELLTYPIST(BaseAlgorithm):
     ----------
     batch_key
         Key in obs field of adata for batch information.
+        Default is "_batch_annotation".
     labels_key
         Key in obs field of adata for cell-type information.
+        Default is "_labels_annotation".
     result_key
         Key in obs in which celltype annotation results are stored.
+        Default is "popv_celltypist_prediction".
     method_kwargs
-        Additional parameters for celltypist training. Options at celltypist.train
+        Additional parameters for celltypist training.
+        Options at :func:`celltypist.train`.
     classifier_dict
-        Dictionary to supply non-default values for celltypist annotation. Options at celltypist.annotate
+        Dictionary to supply non-default values for celltypist annotation.
+        Options at :func:`celltypist.annotate`.
     """
 
     def __init__(
@@ -59,16 +64,28 @@ class CELLTYPIST(BaseAlgorithm):
         if classifier_dict is not None:
             self.classifier_dict.update(classifier_dict)
 
-    def _predict(self, adata):
+    def predict(self, adata):
+        """
+        Predict celltypes using Celltypist.
+
+        Parameters
+        ----------
+        adata
+            Anndata object. Results are stored in adata.obs[self.result_key].
+        """
         logging.info(f'Saving celltypist results to adata.obs["{self.result_key}"]')
 
         if adata.uns["_prediction_mode"] == "fast":
             self.classifier_dict["majority_voting"] = False
             over_clustering = None
-        elif adata.uns["_prediction_mode"] == "inference" and "over_clustering" in adata.obs:
-            index = faiss.read_index(os.path.join(adata.uns["_save_path_trained_models"], "faiss_index.faiss"))
+        elif (
+            adata.uns["_prediction_mode"] == "inference"
+            and "over_clustering" in adata.obs
+            and not settings.recompute_embeddings
+        ):
+            index = joblib.load(os.path.join(adata.uns["_save_path_trained_models"], "pynndescent_index.joblib"))
             query_features = adata.obsm["X_pca"][adata.obs["_dataset"] == "query", :]
-            _, indices = index.search(query_features.astype(np.float32), 5)
+            indices, _ = index.query(query_features.astype(np.float32), k=5)
             neighbor_values = adata.obs.loc[adata.obs["_dataset"] == "ref", "over_clustering"].cat.codes.values[indices]
             adata.obs.loc[adata.obs["_dataset"] == "query", "over_clustering"] = adata.obs[
                 "over_clustering"

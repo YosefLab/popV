@@ -14,27 +14,34 @@ from popv.algorithms._base_algorithm import BaseAlgorithm
 
 class SCANVI_POPV(BaseAlgorithm):
     """
-    Class to compute classifier in scANVI model and predict labels.
+    Class to compute classifier in scANVI model.
 
     Parameters
     ----------
     batch_key
         Key in obs field of adata for batch information.
+        Default is "_batch_annotation".
     labels_key
         Key in obs field of adata for cell-type information.
+        Default is "_labels_annotation".
     result_key
         Key in obs in which celltype annotation results are stored.
+        Default is "popv_scanvi_prediction".
     embedding_key
+        Key in obsm in which latent embedding is stored.
+        Default is "X_scanvi_popv".
+    umap_key
         Key in obsm in which UMAP embedding of integrated data is stored.
+        Default is "X_umap_scanvi_popv".
     model_kwargs
-        Dictionary to supply non-default values for SCVI model. Options at scvi.model.SCVI
+        Dictionary to supply non-default values for SCVI model. Options at :class:`scvi.model.SCANVI`.
     classifier_kwargs
         Dictionary to supply non-default values for SCANVI classifier.
-        Options at classifier_paramerers in scvi.model.SCANVI.from_scvi_model.
+        Options at classifier_paramerers in :class:`scvi.model.SCANVI`.
     embedding_kwargs
-        Dictionary to supply non-default values for UMAP embedding. Options at sc.tl.umap
+        Dictionary to supply non-default values for UMAP embedding. Options at :func:`scanpy.tl.umap`.
     train_kwargs
-        Dictionary to supply non-default values for training scvi. Options at scvi.model.SCVI.train
+        Dictionary to supply non-default values for training scvi. Options at :meth:`scvi.model.SCANVI.train`.
     """
 
     def __init__(
@@ -43,7 +50,8 @@ class SCANVI_POPV(BaseAlgorithm):
         labels_key: str | None = "_labels_annotation",
         save_folder: str | None = None,
         result_key: str | None = "popv_scanvi_prediction",
-        embedding_key: str | None = "X_scanvi_umap_popv",
+        embedding_key: str | None = "X_scanvi_popv",
+        umap_key: str | None = "X_umap_scanvi_popv",
         model_kwargs: dict | None = None,
         classifier_kwargs: dict | None = None,
         embedding_kwargs: dict | None = None,
@@ -55,6 +63,7 @@ class SCANVI_POPV(BaseAlgorithm):
             result_key=result_key,
             embedding_key=embedding_key,
         )
+        self.umap_key = umap_key
         self.save_folder = save_folder
 
         if embedding_kwargs is None:
@@ -98,7 +107,15 @@ class SCANVI_POPV(BaseAlgorithm):
         self.embedding_kwargs = {"min_dist": 0.3}
         self.embedding_kwargs.update(embedding_kwargs)
 
-    def _compute_integration(self, adata):
+    def compute_integration(self, adata):
+        """
+        Compute scANVI model and integrate data.
+
+        Parameters
+        ----------
+        adata
+            Anndata object. Results are stored in adata.obsm[self.embedding_key].
+        """
         logging.info("Integrating data with scANVI")
         if adata.uns["_prediction_mode"] == "retrain":
             if adata.uns["_pretrained_scvi_path"]:
@@ -142,8 +159,22 @@ class SCANVI_POPV(BaseAlgorithm):
                 save_anndata=False,
                 overwrite=True,
             )
+        latent_representation = self.model.get_latent_representation()
+        relabel_indices = adata.obs["_predict_cells"] == "relabel"
+        if self.embedding_key not in adata.obsm:
+            # Initialize X_scanvi with the correct shape if it doesn't exist
+            adata.obsm[self.embedding_key] = np.zeros((adata.n_obs, latent_representation.shape[1]))
+        adata.obsm[self.embedding_key][relabel_indices, :] = latent_representation
 
-    def _predict(self, adata):
+    def predict(self, adata):
+        """
+        Predict celltypes using scANVI.
+
+        Parameters
+        ----------
+        adata
+            Anndata object. Results are stored in adata.obs[self.result_key].
+        """
         logging.info(f'Saving scanvi label prediction to adata.obs["{self.result_key}"]')
 
         if self.result_key not in adata.obs.columns:
@@ -162,19 +193,16 @@ class SCANVI_POPV(BaseAlgorithm):
                 axis=1,
             )
 
-    def _compute_embedding(self, adata):
-        if self.compute_embedding:
-            logging.info(f'Saving UMAP of scanvi results to adata.obs["{self.embedding_key}"]')
-            # Update the .obsm["X_scanvi"] only for the relevant rows
-            latent_representation = self.model.get_latent_representation()
-            relabel_indices = adata.obs["_predict_cells"] == "relabel"
-            if "X_scanvi" not in adata.obsm:
-                # Initialize X_scanvi with the correct shape if it doesn't exist
-                adata.obsm["X_scanvi"] = np.zeros((adata.n_obs, latent_representation.shape[1]))
-            adata.obsm["X_scanvi"][relabel_indices, :] = latent_representation
-            transformer = "rapids" if settings.cuml else None
-            sc.pp.neighbors(adata, use_rep="X_scanvi", transformer=transformer)
-            method = "rapids" if settings.cuml else "umap"
-            adata.obsm[self.embedding_key] = sc.tl.umap(adata, copy=True, method=method, **self.embedding_kwargs).obsm[
-                "X_umap"
-            ]
+    def compute_umap(self, adata):
+        """
+        Compute UMAP embedding of integrated data.
+
+        Parameters
+        ----------
+        adata
+            Anndata object. Results are stored in adata.obsm[self.umap_key].
+        """
+        transformer = "rapids" if settings.cuml else None
+        sc.pp.neighbors(adata, use_rep=self.embedding_key, transformer=transformer)
+        method = "rapids" if settings.cuml else "umap"
+        adata.obsm[self.umap_key] = sc.tl.umap(adata, copy=True, method=method, **self.embedding_kwargs).obsm["X_umap"]

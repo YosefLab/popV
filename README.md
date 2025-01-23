@@ -33,11 +33,11 @@ Currently implemented algorithms are:
 - [Celltypist](https://www.celltypist.org) cell type classification
 
 All algorithms are implemented as a class in
-[popv/algorithms](popv/algorithms/__init__.py).
+[popv/algorithms](https://github.com/YosefLab/popV/tree/main/popv/algorithms).
 
 New classifiers should inherit from
-[BaseAlgorithm](popv/algorithms/_base_algorithm.py). Adding a new class with the
-methods defined in this class and adding it to [NTAlgorithms](popv/annotation.py)
+[BaseAlgorithm](popv.algorithms.BaseAlgorithm). Adding a new class with the
+methods defined in this class and adding it to [AlgorithmsNT](popv.annotation.AlgorithmsNT)
 will tell PopV to include this class into its
 classifiers and will use the new classifier as another expert.
 
@@ -49,11 +49,13 @@ nearest neighbors.
 
 Pretrained models are stored on
 [HuggingFace](https://huggingface.co/popV) and can be downloaded by using
-[pull_from_huggingface_hub](popv/hub.py) that returns a class and can annotate
-query data by calling the [annotate_data](popv/hub.py) method of that class.
+[pull_from_huggingface_hub](popv.hub.HubModel.pull_from_huggingface_hub)
+that returns a class and can annotate
+query data by calling the [annotate_data](popv.hub.HubModel.annotate_data)
+method of that class.
 
 All input parameters are defined during initial call to
-[Process_Query](popv/preprocessing.py) and are stored in the uns
+[Process_Query](popv.preprocessing.Process_Query) and are stored in the uns
 field of the generated AnnData object. PopV has three levels of prediction
 complexities:
 
@@ -67,7 +69,7 @@ complexities:
     embedding).
 
 A user-defined selection of classification algorithms can be defined when
-calling [annotate_data](popv/annotation.py). Additionally, advanced users
+calling [annotate_data](popv.annotation.annotate_data). Additionally, advanced users
 can define non-standard parameters for the integration methods and classifiers.
 
 ## Output
@@ -107,7 +109,7 @@ pip install git+https://github.com/YosefLab/popV
 
 We provide an example notebook in Google Colab:
 
-- [Tutorial demonstrating use of Tabula sapiens as a reference](tabula_sapiens_tutorial.ipynb)
+- [Tutorial demonstrating use of Tabula sapiens as a reference](tutorials/notebooks/tabula_sapiens_tutorial.ipynb)
 
 This notebook will guide you through annotating a dataset based on the annotated
 [Tabula sapiens reference](https://tabula-sapiens-portal.ds.czbiohub.org) and

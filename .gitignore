@@ -27,6 +27,9 @@ __pycache__/
 # docs
 /docs/generated/
 /docs/_build/
+/docs/reference/
+/docs/jupyter_execute/
+
 
 # IDEs
 /.idea/

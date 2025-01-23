@@ -14,22 +14,27 @@ from popv.algorithms._base_algorithm import BaseAlgorithm
 
 class ONCLASS(BaseAlgorithm):
     """
-    Class to compute KNN classifier after BBKNN integration.
+    Class to compute OnClass cell-type prediction.
 
     Parameters
     ----------
     batch_key
         Key in obs field of adata for batch information.
+        Default is "_batch_annotation".
     labels_key
         Key in obs field of adata for cell-type information.
+        Default is "_labels_annotation".
     layer_key
         Layer in adata used for Onclass prediction.
+        Default is adata.X.
     max_iter
-        Maximum iteration in Onclass training
+        Maximum iteration in Onclass training.
+        Default is 30.
     cell_ontology_obs_key
         Key in obs in which ontology celltypes are stored.
     result_key
         Key in obs in which celltype annotation results are stored.
+        Default is "popv_onclass_prediction".
     """
 
     def __init__(
@@ -47,16 +52,21 @@ class ONCLASS(BaseAlgorithm):
             labels_key=labels_key,
             result_key=result_key,
             seen_result_key=seen_result_key,
-            layer_key=layer_key,
         )
+        self.layer_key = layer_key
         self.cell_ontology_obs_key = cell_ontology_obs_key
         self.max_iter = max_iter
         self.labels_key = labels_key
 
-    def _compute_integration(self, adata):
-        pass
+    def predict(self, adata):
+        """
+        Predict celltypes using OnClass.
 
-    def _predict(self, adata):
+        Parameters
+        ----------
+        adata
+            Anndata object. Results are stored in adata.obs[self.result_key].
+        """
         logging.info(f'Computing Onclass. Storing prediction in adata.obs["{self.result_key}"]')
         adata.obs.loc[adata.obs["_dataset"] == "query", "self.labels_key"] = adata.uns["unknown_celltype_label"]
 
@@ -175,6 +185,3 @@ class ONCLASS(BaseAlgorithm):
                     adata.obs[col] = adata.uns["unknown_celltype_label"]
                     adata.obs[col] = adata.obs[col].astype(str)  # Set dtype to string
         adata.obs.loc[adata.obs["_predict_cells"] == "relabel", result_df.columns] = result_df
-
-    def _compute_embedding(self, adata):
-        return None

@@ -32,7 +32,7 @@ class HubModel:
     Parameters
     ----------
     repo_name
-        ID of the huggingface repo where this model is uploaded
+        ID of the HuggingFace repo where this model is uploaded
     local_dir
         Local directory where the data and pre-trained model reside.
     metadata
@@ -142,6 +142,7 @@ class HubModel:
         ref_adata = self.adata if prediction_mode == "retrain" else self.minified_adata
         setup_dict = self.metadata.setup_dict
         if gene_symbols is not None:
+            print("SSSSSS")
             query_adata = self.map_genes(adata=query_adata, gene_symbols=gene_symbols)
         print("LLLLLL", self.local_dir, os.listdir(self.local_dir))
 
@@ -185,27 +186,27 @@ class HubModel:
         collection_slug: str | None = None,
         **kwargs,
     ):
-        """Push this model to huggingface.
+        """Push this model to HuggingFace.
 
-        If the dataset is too large to upload to huggingface, this will raise an
+        If the dataset is too large to upload to HuggingFace, this will raise an
         exception prompting the user to upload the data elsewhere. Otherwise, the
         data, model card, and metadata are all uploaded to the given model repo.
 
         Parameters
         ----------
         repo_name
-            ID of the huggingface repo where this model needs to be uploaded
+            ID of the HuggingFace repo where this model needs to be uploaded
         repo_token
-            huggingface API token with write permissions if None uses token in HfFolder.get_token()
+            HuggingFace API token with write permissions if None uses token in HfFolder.get_token()
         repo_create
             Whether to create the repo
         repo_create_kwargs
-            Keyword arguments passed into :meth:`~huggingface_hub.create_repo` if
+            Keyword arguments passed into :meth:`huggingface_hub.HfApi.create_repo` if
             ``repo_create=True``.
         collection_slug
             The internal name in HuggingFace for a dataset collection.
         **kwargs
-            Additional keyword arguments passed into :meth:`~huggingface_hub.HfApi.upload_file`.
+            Additional keyword arguments passed into :meth:`huggingface_hub.HfApi.upload_file`.
         """
         from huggingface_hub import HfApi, HfFolder, add_collection_item, create_repo
 
@@ -263,23 +264,23 @@ class HubModel:
         revision: str | None = None,
         **kwargs,
     ):
-        """Download the given model repo from huggingface.
+        """Download the given model repo from HuggingFace.
 
         The model, its card, data, metadata are downloaded to a cached location on disk
-        selected by huggingface and an instance of this class is created with that info
+        selected by HuggingFace and an instance of this class is created with that info
         and returned.
 
         Parameters
         ----------
         repo_name
-            ID of the huggingface repo where this model needs to be uploaded
+            ID of the HuggingFace repo where this model needs to be uploaded
         cache_dir
             The directory where the downloaded model artifacts will be cached
         revision
             The revision to pull from the repo. This can be a branch name, a tag, or a full-length
             commit hash. If None, the default (latest) revision is pulled.
         kwargs
-            Additional keyword arguments to pass to :meth:`~huggingface_hub.snapshot_download`.
+            Additional keyword arguments to pass to :func:`huggingface_hub.snapshot_download`.
         """
         if revision is None:
             warnings.warn(
@@ -299,7 +300,6 @@ class HubModel:
             repo_type="dataset",
             cache_dir=cache_dir,
         )
-        print("SSSSSSS", ontology_snapshot)
         model_card = ModelCard.load(repo_name)
         return cls(
             snapshot_folder,
@@ -352,7 +352,7 @@ class HubModel:
     def adata(self) -> AnnData | None:
         """Returns the full training data for this model.
 
-        If the data has not been loaded yet, this will call :meth:`~cellxgene_census.download_source_h5ad`.
+        If the data has not been loaded yet, this will call :func:`cellxgene_census.download_source_h5ad`.
         Otherwise, it will simply return the loaded data.
         """
         if self._adata is None:
@@ -368,7 +368,7 @@ class HubModel:
     def minified_adata(self) -> AnnData | None:
         """Returns the minified data for this model.
 
-        If the data has not been loaded yet, this will call :meth:`~scanpy.read_h5ad`.
+        If the data has not been loaded yet, this will call :func:`scanpy.read_h5ad`.
         Otherwise, it will simply return the loaded data.
         """
         if self._minfied_adata is None:

@@ -23,26 +23,32 @@ from popv import _utils, algorithms
 class AlgorithmsNT:
     """Dataclass to store all available algorithms."""
 
-    OUTDATED_ALGORITHMS: tuple[str, ...] = ("rf", "knn_on_scanorama")
+    OUTDATED_ALGORITHMS: tuple[str, ...] = (
+        "Random_Forest",
+        "KNN_SCANORAMA",
+    )
     FAST_ALGORITHMS: tuple[str, ...] = (
-        "knn_on_scvi",
-        "scanvi",
-        "svm",
-        "xgboost",
-        "onclass",
-        "celltypist",
+        "KNN_SCVI",
+        "SCANVI_POPV",
+        "Support_Vector",
+        "XGboost",
+        "ONCLASS",
+        "CELLTYPIST",
     )
     CURRENT_ALGORITHMS: tuple[str, ...] = field(init=False)
     ALL_ALGORITHMS: tuple[str, ...] = field(init=False)
 
     def __post_init__(self):
         self.CURRENT_ALGORITHMS = tuple(
-            i[0] for i in inspect.getmembers(algorithms, inspect.isclass) if i[0] not in self.OUTDATED_ALGORITHMS
+            i[0]
+            for i in inspect.getmembers(algorithms, inspect.isclass)
+            if i[0] not in self.OUTDATED_ALGORITHMS and i[0] != "BaseAlgorithm"
         )
-        self.ALL_ALGORITHMS = tuple(i[0] for i in inspect.getmembers(algorithms, inspect.isclass))
+        self.ALL_ALGORITHMS = tuple(
+            i[0] for i in inspect.getmembers(algorithms, inspect.isclass) if i[0] != "BaseAlgorithm"
+        )
 
 
-# Example usage
 algorithms_nt = AlgorithmsNT()
 
 
@@ -53,15 +59,13 @@ def annotate_data(
     methods_kwargs: dict | None = None,
 ) -> None:
     """
-    Annotate an AnnData dataset preprocessed by preprocessing.Process_Query by using the annotation pipeline.
+    Annotate an AnnData dataset preprocessed by :class:`popv.preprocessing.Process_Query` by using the annotation pipeline.
 
     Parameters
     ----------
     adata
-        AnnData of query and reference cells. Adata object of Process_Query instance.
-
-    Methods
-    -------
+        AnnData of query and reference cells. AnnData object after running :class:`popv.preprocessing.Process_Query`.
+    methods_
         List of methods used for cell-type annotation. Defaults to all algorithms.
     save_path
         Path were annotated query data is saved. Defaults to None and is not saving data.
@@ -103,9 +107,9 @@ def annotate_data(
 
     for method in tqdm(methods):
         current_method = getattr(algorithms, method)(**methods_kwargs.pop(method, {}))
-        current_method._compute_integration(adata)
-        current_method._predict(adata)
-        current_method._compute_embedding(adata)
+        current_method.compute_integration(adata)
+        current_method.predict(adata)
+        current_method.compute_umap(adata)
         all_prediction_keys += [current_method.result_key]
         all_prediction_keys_seen += [current_method.seen_result_key]
 

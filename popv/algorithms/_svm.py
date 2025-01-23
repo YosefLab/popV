@@ -13,7 +13,7 @@ from popv import settings
 from popv.algorithms._base_algorithm import BaseAlgorithm
 
 
-class SVM(BaseAlgorithm):
+class Support_Vector(BaseAlgorithm):
     """
     Class to compute LinearSVC.
 
@@ -21,14 +21,19 @@ class SVM(BaseAlgorithm):
     ----------
     batch_key
         Key in obs field of adata for batch information.
+        Default is "_batch_annotation".
     labels_key
         Key in obs field of adata for cell-type information.
+        Default is "_labels_annotation".
     layer_key
         Key in layers field of adata used for classification. By default uses 'X' (log1p10K).
     result_key
         Key in obs in which celltype annotation results are stored.
+        Default is "popv_svm_prediction".
     classifier_dict
-        Dictionary to supply non-default values for SVM classifier. Options at sklearn.svm.
+        Dictionary to supply non-default values for SVM classifier. Options at
+        :class:`sklearn.svm.LinearSVC`.
+        Default is {'C': 1, 'max_iter': 5000, 'class_weight': 'balanced'}.
     """
 
     def __init__(
@@ -44,9 +49,9 @@ class SVM(BaseAlgorithm):
             batch_key=batch_key,
             labels_key=labels_key,
             result_key=result_key,
-            layer_key=layer_key,
         )
 
+        self.layer_key = layer_key
         self.classifier_dict = {
             "C": 1,
             "max_iter": 5000,
@@ -56,7 +61,15 @@ class SVM(BaseAlgorithm):
             self.classifier_dict.update(classifier_dict)
         self.train_both = train_both
 
-    def _predict(self, adata):
+    def predict(self, adata):
+        """
+        Predict celltypes using LinearSVC.
+
+        Parameters
+        ----------
+        adata
+            Anndata object. Results are stored in adata.obs[self.result_key].
+        """
         logging.info(f'Computing support vector machine. Storing prediction in adata.obs["{self.result_key}"]')
         test_x = adata.layers[self.layer_key] if self.layer_key else adata.X
 

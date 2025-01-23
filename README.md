@@ -49,13 +49,13 @@ nearest neighbors.
 
 Pretrained models are stored on
 [HuggingFace](https://huggingface.co/popV) and can be downloaded by using
-[pull_from_huggingface_hub]([popV.popv.](https://github.com/YosefLab/popV/tree/main/popv/hub/_model.py)
+\[pull_from_huggingface_hub\]([popV.popv.](https://github.com/YosefLab/popV/tree/main/popv/hub/_model.py)
 that returns a class and can annotate
-query data by calling the [annotate_data]([popv.hub.HubModel.annotate_data](https://github.com/YosefLab/popV/tree/main/popv/hub/_model.py)
+query data by calling the \[annotate_data\]([popv.hub.HubModel.annotate_data](https://github.com/YosefLab/popV/tree/main/popv/hub/_model.py)
 method of that class.
 
 All input parameters are defined during initial call to
-[Process_Query]([popv.preprocessing.Process_Query](https://github.com/YosefLab/popV/tree/main/popv/preprocessing.py) and are stored in the uns
+\[Process_Query\]([popv.preprocessing.Process_Query](https://github.com/YosefLab/popV/tree/main/popv/preprocessing.py) and are stored in the uns
 field of the generated AnnData object. PopV has three levels of prediction
 complexities:
 
@@ -69,7 +69,7 @@ complexities:
     embedding).
 
 A user-defined selection of classification algorithms can be defined when
-calling [annotate_data]([popv.annotation.annotate_data](https://github.com/YosefLab/popV/tree/main/popv/annotation.py). Additionally, advanced users
+calling \[annotate_data\]([popv.annotation.annotate_data](https://github.com/YosefLab/popV/tree/main/popv/annotation.py). Additionally, advanced users
 can define non-standard parameters for the integration methods and classifiers.
 
 ## Output

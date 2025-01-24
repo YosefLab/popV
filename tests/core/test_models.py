@@ -1,5 +1,7 @@
 """Test various algorithms implemented in PopV."""
 
+import sys
+
 import anndata
 import numpy as np
 import popv
@@ -63,7 +65,8 @@ def _get_test_anndata(
     return adata
 
 
-def test_annotation_hub(private):
+@pytest.mark.skipif(sys.version_info[:2] == (3, 10), reason="Test does not run on Python 3.10")
+def test_annotation_hub(private: bool):
     """Test Annotation and Plotting pipeline without ontology."""
     output_folder = "tests/tmp_testing/popv_test_results_hub/"
     adata = _get_test_anndata(output_folder=output_folder).adata

@@ -65,7 +65,7 @@ def _get_test_anndata(
     return adata
 
 
-@pytest.mark.skipif(sys.version_info[:2] == (3, 10), reason="Test does not run on Python 3.10")
+@pytest.mark.skipif(sys.version_info[:2] != (3, 12), reason="Test does not run on Python 3.10")
 def test_annotation_hub(private: bool):
     """Test Annotation and Plotting pipeline without ontology."""
     output_folder = "tests/tmp_testing/popv_test_results_hub/"

@@ -1,5 +1,7 @@
 """Test various algorithms implemented in PopV."""
 
+import sys
+
 import anndata
 import numpy as np
 import popv
@@ -63,28 +65,78 @@ def _get_test_anndata(
     return adata
 
 
+@pytest.mark.skipif(sys.version_info[:2] != (3, 12), reason="Test does not run on Python 3.10")
+def test_annotation_hub(private: bool):
+    """Test Annotation and Plotting pipeline without ontology."""
+    output_folder = "tests/tmp_testing/popv_test_results_hub/"
+    adata = _get_test_anndata(output_folder=output_folder).adata
+    popv.annotation.annotate_data(
+        adata,
+        save_path="tests/tmp_testing/popv_test_results/",
+        methods_kwargs={
+            "KNN_BBKNN": {"method_kwargs": {"use_annoy": True}},
+            "KNN_SCVI": {"train_kwargs": {"max_epochs": 3}},
+            "SCANVI_POPV": {"train_kwargs": {"max_epochs": 3, "max_epochs_unsupervised": 1}},
+        },
+    )
+    minified_adata = popv._utils.get_minified_adata(adata)
+    minified_adata.write(f"{output_folder}/minified_ref_adata.h5ad")
+    popv.hub.create_criticism_report(
+        adata,
+        save_folder=output_folder,
+    )
+    model_json = {
+        "description": "Tabula Sapiens is a benchmark, first-draft human cell atlas of over 1.1M cells from 28 organs of 24 normal human subjects. This work is the product of the Tabula Sapiens Consortium. Taking the organs from the same individual controls for genetic background, age, environment, and epigenetic effects, and allows detailed analysis and comparison of cell types that are shared between tissues.",
+        "tissues": ["test"],
+        "cellxgene_url": "test",
+        "references": "Tabula Sapiens reveals transcription factor expression, senescence effects, and sex-specific features in cell types from 28 human organs and tissues, The Tabula Sapiens Consortium; bioRxiv, doi: https://doi.org/10.1101/2024.12.03.626516",
+        "license_info": "cc-by-4.0",
+    }
+    hmch = popv.hub.HubModelCardHelper.from_dir(output_folder, anndata_version=anndata.__version__, **model_json)
+    hm = popv.hub.HubMetadata.from_anndata(
+        adata,
+        popv_version=popv.__version__,
+        anndata_version=anndata.__version__,
+        cellxgene_url=model_json["cellxgene_url"],
+    )
+    hmo = popv.hub.HubModel(output_folder, model_card=hmch, metadata=hm)
+    if private:
+        hmo.push_to_huggingface_hub(
+            repo_name="popV/test",
+            repo_token=None,
+            repo_create=True,
+            repo_create_kwargs={"exist_ok": True},
+        )
+    hmo = popv.hub.HubModel.pull_from_huggingface_hub(
+        "popV/test", cache_dir="tests/tmp_testing/popv_test_results_hub_pulled/"
+    )
+    query_adata_path = "resources/dataset/test/lca_subset.h5ad"
+    query_adata = sc.read(query_adata_path)
+    hmo.annotate_data(query_adata, prediction_mode="fast")
+
+
 def test_bbknn():
     """Test BBKNN algorithm."""
     adata = _get_test_anndata().adata
-    current_method = popv.algorithms.knn_on_bbknn(method_kwargs={"use_annoy": True})
+    current_method = popv.algorithms.KNN_BBKNN(method_kwargs={"use_annoy": True})
 
-    current_method._compute_integration(adata)
-    current_method._predict(adata)
-    current_method._compute_embedding(adata)
+    current_method.compute_integration(adata)
+    current_method.predict(adata)
+    current_method.compute_umap(adata)
 
-    assert "popv_knn_on_bbknn_prediction" in adata.obs.columns
-    assert not adata.obs["popv_knn_on_bbknn_prediction"].isnull().any()
+    assert "popv_knn_bbknn_prediction" in adata.obs.columns
+    assert not adata.obs["popv_knn_bbknn_prediction"].isnull().any()
 
 
 def test_onclass():
     """Test Onclass algorithm."""
     adata = _get_test_anndata().adata
-    current_method = popv.algorithms.onclass(
+    current_method = popv.algorithms.ONCLASS(
         max_iter=2,
     )
-    current_method._compute_integration(adata)
-    current_method._predict(adata)
-    current_method._compute_embedding(adata)
+    current_method.compute_integration(adata)
+    current_method.predict(adata)
+    current_method.compute_umap(adata)
 
     assert "popv_onclass_prediction" in adata.obs.columns
     assert not adata.obs["popv_onclass_prediction"].isnull().any()
@@ -93,10 +145,10 @@ def test_onclass():
 def test_xgboost():
     """Test Random Forest algorithm."""
     adata = _get_test_anndata().adata
-    current_method = popv.algorithms.xgboost()
-    current_method._compute_integration(adata)
-    current_method._predict(adata)
-    current_method._compute_embedding(adata)
+    current_method = popv.algorithms.XGboost()
+    current_method.compute_integration(adata)
+    current_method.predict(adata)
+    current_method.compute_umap(adata)
 
     assert "popv_xgboost_prediction" in adata.obs.columns
     assert not adata.obs["popv_xgboost_prediction"].isnull().any()
@@ -105,37 +157,37 @@ def test_xgboost():
 def test_scanorama():
     """Test Scanorama algorithm."""
     adata = _get_test_anndata().adata
-    current_method = popv.algorithms.knn_on_scanorama()
+    current_method = popv.algorithms.KNN_SCANORAMA()
 
-    current_method._compute_integration(adata)
-    current_method._predict(adata)
-    current_method._compute_embedding(adata)
+    current_method.compute_integration(adata)
+    current_method.predict(adata)
+    current_method.compute_umap(adata)
 
-    assert "popv_knn_on_scanorama_prediction" in adata.obs.columns
-    assert not adata.obs["popv_knn_on_scanorama_prediction"].isnull().any()
+    assert "popv_knn_scanorama_prediction" in adata.obs.columns
+    assert not adata.obs["popv_knn_scanorama_prediction"].isnull().any()
 
 
 def test_harmony():
     """Test Harmony algorithm."""
     adata = _get_test_anndata().adata
-    current_method = popv.algorithms.knn_on_harmony()
+    current_method = popv.algorithms.KNN_HARMONY()
 
-    current_method._compute_integration(adata)
-    current_method._predict(adata)
-    current_method._compute_embedding(adata)
+    current_method.compute_integration(adata)
+    current_method.predict(adata)
+    current_method.compute_umap(adata)
 
-    assert "popv_knn_on_harmony_prediction" in adata.obs.columns
-    assert not adata.obs["popv_knn_on_harmony_prediction"].isnull().any()
+    assert "popv_knn_harmony_prediction" in adata.obs.columns
+    assert not adata.obs["popv_knn_harmony_prediction"].isnull().any()
 
 
 def test_scanvi():
     """Test SCANVI algorithm."""
     adata = _get_test_anndata().adata
-    current_method = popv.algorithms.scanvi(train_kwargs={"max_epochs": 2, "max_epochs_unsupervised": 1})
+    current_method = popv.algorithms.SCANVI_POPV(train_kwargs={"max_epochs": 2, "max_epochs_unsupervised": 1})
 
-    current_method._compute_integration(adata)
-    current_method._predict(adata)
-    current_method._compute_embedding(adata)
+    current_method.compute_integration(adata)
+    current_method.predict(adata)
+    current_method.compute_umap(adata)
 
     assert "popv_scanvi_prediction" in adata.obs.columns
     assert not adata.obs["popv_scanvi_prediction"].isnull().any()
@@ -144,11 +196,11 @@ def test_scanvi():
 def test_scvi():
     """Test SCVI algorithm."""
     adata = _get_test_anndata().adata
-    current_method = popv.algorithms.knn_on_scvi(train_kwargs={"max_epochs": 3})
+    current_method = popv.algorithms.KNN_SCVI(train_kwargs={"max_epochs": 3})
 
-    current_method._compute_integration(adata)
-    current_method._predict(adata)
-    current_method._compute_embedding(adata)
+    current_method.compute_integration(adata)
+    current_method.predict(adata)
+    current_method.compute_umap(adata)
 
     assert "popv_knn_on_scvi_prediction" in adata.obs.columns
     assert not adata.obs["popv_knn_on_scvi_prediction"].isnull().any()
@@ -157,11 +209,11 @@ def test_scvi():
 def test_svm():
     """Test Support Vector Machine algorithm."""
     adata = _get_test_anndata().adata
-    current_method = popv.algorithms.svm()
+    current_method = popv.algorithms.Support_Vector()
 
-    current_method._compute_integration(adata)
-    current_method._predict(adata)
-    current_method._compute_embedding(adata)
+    current_method.compute_integration(adata)
+    current_method.predict(adata)
+    current_method.compute_umap(adata)
 
     assert "popv_svm_prediction" in adata.obs.columns
     assert not adata.obs["popv_svm_prediction"].isnull().any()
@@ -170,11 +222,11 @@ def test_svm():
 def test_celltypist():
     """Test Celltypist algorithm."""
     adata = _get_test_anndata().adata
-    current_method = popv.algorithms.celltypist()
+    current_method = popv.algorithms.CELLTYPIST()
 
-    current_method._compute_integration(adata)
-    current_method._predict(adata)
-    current_method._compute_embedding(adata)
+    current_method.compute_integration(adata)
+    current_method.predict(adata)
+    current_method.compute_umap(adata)
 
     assert "popv_celltypist_prediction" in adata.obs.columns
     assert not adata.obs["popv_celltypist_prediction"].isnull().any()
@@ -250,7 +302,9 @@ def test_annotation():
 def test_annotation_no_ontology():
     """Test Annotation and Plotting pipeline without ontology."""
     adata = _get_test_anndata(cl_obo_folder=False).adata
-    popv.annotation.annotate_data(adata, methods=["svm", "rf"], save_path="tests/tmp_testing/popv_test_results/")
+    popv.annotation.annotate_data(
+        adata, methods=["Support_Vector", "Random_Forest"], save_path="tests/tmp_testing/popv_test_results/"
+    )
     popv.visualization.agreement_score_bar_plot(adata)
     popv.visualization.prediction_score_bar_plot(adata)
     popv.visualization.make_agreement_plots(adata, prediction_keys=adata.uns["prediction_keys"])
@@ -264,62 +318,13 @@ def test_annotation_no_ontology():
     assert not adata.obs["popv_majority_vote_prediction"].isnull().any()
 
     adata = _get_test_anndata(cl_obo_folder=False, prediction_mode="inference").adata
-    popv.annotation.annotate_data(adata, methods=["svm", "rf"], save_path=None)
+    popv.annotation.annotate_data(adata, methods=["Support_Vector", "Random_Forest"], save_path=None)
 
     assert "popv_majority_vote_prediction" in adata.obs.columns
     assert not adata.obs["popv_majority_vote_prediction"].isnull().any()
 
     adata = _get_test_anndata(cl_obo_folder=False, prediction_mode="fast").adata
-    popv.annotation.annotate_data(adata, methods=["svm", "rf"], save_path=None)
+    popv.annotation.annotate_data(adata, methods=["Support_Vector", "Random_Forest"], save_path=None)
 
     assert "popv_majority_vote_prediction" in adata.obs.columns
     assert not adata.obs["popv_majority_vote_prediction"].isnull().any()
-
-
-def test_annotation_hub(private):
-    """Test Annotation and Plotting pipeline without ontology."""
-    output_folder = "tests/tmp_testing/popv_test_results_hub/"
-    adata = _get_test_anndata(output_folder=output_folder).adata
-    popv.annotation.annotate_data(
-        adata,
-        save_path="tests/tmp_testing/popv_test_results/",
-        methods_kwargs={
-            "knn_on_bbknn": {"method_kwargs": {"use_annoy": True}},
-            "knn_on_scvi": {"train_kwargs": {"max_epochs": 3}},
-            "scanvi": {"train_kwargs": {"max_epochs": 3, "max_epochs_unsupervised": 1}},
-        },
-    )
-    minified_adata = popv._utils.get_minified_adata(adata)
-    minified_adata.write(f"{output_folder}/minified_ref_adata.h5ad")
-    popv.hub.create_criticism_report(
-        adata,
-        save_folder=output_folder,
-    )
-    model_json = {
-        "description": "Tabula Sapiens is a benchmark, first-draft human cell atlas of over 1.1M cells from 28 organs of 24 normal human subjects. This work is the product of the Tabula Sapiens Consortium. Taking the organs from the same individual controls for genetic background, age, environment, and epigenetic effects, and allows detailed analysis and comparison of cell types that are shared between tissues.",
-        "tissues": ["test"],
-        "cellxgene_url": "test",
-        "references": "Tabula Sapiens reveals transcription factor expression, senescence effects, and sex-specific features in cell types from 28 human organs and tissues, The Tabula Sapiens Consortium; bioRxiv, doi: https://doi.org/10.1101/2024.12.03.626516",
-        "license_info": "cc-by-4.0",
-    }
-    hmch = popv.hub.HubModelCardHelper.from_dir(output_folder, anndata_version=anndata.__version__, **model_json)
-    hm = popv.hub.HubMetadata.from_anndata(
-        adata,
-        popv_version=popv.__version__,
-        anndata_version=anndata.__version__,
-        cellxgene_url=model_json["cellxgene_url"],
-    )
-    hmo = popv.hub.HubModel(output_folder, model_card=hmch, metadata=hm)
-    if private:
-        hmo.push_to_huggingface_hub(
-            repo_name="popV/test",
-            repo_token=None,
-            repo_create=True,
-            repo_create_kwargs={"exist_ok": True},
-        )
-    hmo = popv.hub.HubModel.pull_from_huggingface_hub(
-        "popV/test", cache_dir="tests/tmp_testing/popv_test_results_hub_pulled/"
-    )
-    query_adata_path = "resources/dataset/test/lca_subset.h5ad"
-    query_adata = sc.read(query_adata_path)
-    hmo.annotate_data(query_adata, prediction_mode="fast")

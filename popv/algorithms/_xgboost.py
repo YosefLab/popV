@@ -13,7 +13,7 @@ from popv.algorithms._base_algorithm import BaseAlgorithm
 
 class XGboost(BaseAlgorithm):
     """
-    Class to compute Xgboost classifier.
+    Class to compute XGboost classifier.
 
     Parameters
     ----------
@@ -25,10 +25,10 @@ class XGboost(BaseAlgorithm):
         Key in layers field of adata used for classification. By default uses 'X' (log1p10K).
     result_key
         Key in obs in which celltype annotation results are stored.
-    enable_cuml
-        Enable cuml, which currently doesn't support weighting. Default to popv.settings.cuml.
     classifier_dict
-        Dictionary to supply non-default values for RF classifier. Options at sklearn.ensemble.RandomForestClassifier.
+        Dictionary to supply non-default values for XGboost classifier.
+        Options at :func:`xgboost.train`.
+        Default is {'tree_method': 'hist', 'device': 'cuda' if settings.cuml else 'cpu', 'objective': 'multi:softprob'}.
     """
 
     def __init__(
@@ -43,9 +43,9 @@ class XGboost(BaseAlgorithm):
             batch_key=batch_key,
             labels_key=labels_key,
             result_key=result_key,
-            layer_key=layer_key,
         )
 
+        self.layer_key = layer_key
         self.classifier_dict = {
             "tree_method": "hist",
             "device": "cuda" if settings.cuml else "cpu",
@@ -54,7 +54,15 @@ class XGboost(BaseAlgorithm):
         if classifier_dict is not None:
             self.classifier_dict.update(classifier_dict)
 
-    def _predict(self, adata):
+    def predict(self, adata):
+        """
+        Predict celltypes using XGboost.
+
+        Parameters
+        ----------
+        adata
+            Anndata object. Results are stored in adata.obs[self.result_key].
+        """
         logging.info(f'Computing XGboost classifier. Storing prediction in adata.obs["{self.result_key}"]')
 
         subset = adata[adata.obs["_predict_cells"] == "relabel"]

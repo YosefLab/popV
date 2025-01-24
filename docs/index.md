@@ -1,4 +1,4 @@
-```{include} ../README.md
+```{include} README.md
 
 ```
 
@@ -7,9 +7,7 @@
 :maxdepth: 1
 
 api.md
+tutorials/index.md
 changelog.md
-contributing.md
 references.md
-
-notebooks/example
 ```

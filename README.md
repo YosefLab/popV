@@ -73,6 +73,10 @@ require further manual annotation. PopV also outputs UMAP embeddings of all
 integrated latent spaces if `popv.settings.compute_embedding == True` and computes
 certainties for every used classifier if `popv.settings.return_probabilities == True`.
 
+# Resources
+
+- Tutorials, API reference, and installation guides are available in the [documentation].
+  
 ## Installation
 
 We suggest using a package manager like `conda` or `mamba` to install the
@@ -105,3 +109,5 @@ see also [Osumi-Sutherland et al](https://www.nature.com/articles/s41556-021-007
 Using a cell ontology is a requirement to run OnClass as a prediction algorithm.
 Setting ontology
 to false, will disable this step and allows running popV without using a cell ontology.
+
+[documentation]: https://popv-docs.readthedocs.io/en/latest/

@@ -303,8 +303,7 @@ def test_annotation_no_ontology():
     """Test Annotation and Plotting pipeline without ontology."""
     adata = _get_test_anndata(cl_obo_folder=False).adata
     popv.annotation.annotate_data(
-        adata, methods=["Support_Vector", "Random_Forest", "ONCLASS"],
-        save_path="tests/tmp_testing/popv_test_results/"
+        adata, methods=["Support_Vector", "Random_Forest", "ONCLASS"], save_path="tests/tmp_testing/popv_test_results/"
     )
     popv.visualization.agreement_score_bar_plot(adata)
     popv.visualization.prediction_score_bar_plot(adata)

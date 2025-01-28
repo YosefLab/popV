@@ -73,7 +73,7 @@ require further manual annotation. PopV also outputs UMAP embeddings of all
 integrated latent spaces if `popv.settings.compute_embedding == True` and computes
 certainties for every used classifier if `popv.settings.return_probabilities == True`.
 
-# Resources
+## Resources
 
 - Tutorials, API reference, and installation guides are available in the [documentation].
 

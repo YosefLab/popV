@@ -76,7 +76,7 @@ certainties for every used classifier if `popv.settings.return_probabilities == 
 # Resources
 
 - Tutorials, API reference, and installation guides are available in the [documentation].
-  
+
 ## Installation
 
 We suggest using a package manager like `conda` or `mamba` to install the

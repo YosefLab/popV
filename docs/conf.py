@@ -36,7 +36,7 @@ needs_sphinx = "4.0"
 
 html_context = {
     "display_github": True,  # Integrate GitHub
-    "github_user": "scverse",  # Username
+    "github_user": "YosefLab",  # Username
     "github_repo": project_name,  # Repo name
     "github_version": "main",  # Version
     "conf_py_path": "/docs/",  # Path in the checkout to the docs root
@@ -64,7 +64,7 @@ extensions = [
 
 
 # for sharing urls with nice info
-ogp_site_url = "https://docs.popv.org/"
+ogp_site_url = "https://popv-docs.readthedocs.io/en/latest/"
 ogp_image = "https://docs.popv.org/en/stable/_static/popv_logo.png"
 
 # Generate the API documentation when building

@@ -10,7 +10,7 @@ exclude = ["resources/*", "tests/*", "dataset/*"]
 
 [project]
 name = "PopV"
-version = "0.5.0"
+version = "0.5.1"
 description = "Consensus prediction of cell type labels with popV"
 readme = "README.md"
 requires-python = ">=3.10"

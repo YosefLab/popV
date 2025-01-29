@@ -64,7 +64,7 @@ extensions = [
 
 
 # for sharing urls with nice info
-ogp_site_url = "https://popv-docs.readthedocs.io/en/latest/"
+ogp_site_url = "https://popv.readthedocs.io/en/latest/"
 ogp_image = "https://docs.popv.org/en/stable/_static/popv_logo.png"
 
 # Generate the API documentation when building

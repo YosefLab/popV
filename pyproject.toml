@@ -10,7 +10,7 @@ exclude = ["resources/*", "tests/*", "dataset/*"]
 
 [project]
 name = "popV"
-version = "0.5.1post1"
+version = "0.5.2"
 description = "Consensus prediction of cell type labels with popV"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -51,7 +51,7 @@ dependencies = [
     "harmony-pytorch",
     "huggingface",
     "xgboost",
-    "louvain",
+    "leidenalg",
     "cellxgene_census",
 ]
 

@@ -6,7 +6,6 @@
 [![Coverage](https://codecov.io/gh/YosefLab/popv/branch/main/graph/badge.svg?token=KuSsL5q3l7)](https://codecov.io/gh/YosefLab/popv)
 [![Code Style](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/python/black)
 [![Downloads](https://pepy.tech/badge/popv)](https://pepy.tech/project/popv)
-[![Docs](https://readthedocs.org/projects/popv/badge/?version=latest)](https://popv-docs.readthedocs.io/en/latest/)
 
 PopV uses popular vote of a variety of cell-type transfer tools to classify
 cell-types in a query dataset based on a test dataset. Using this variety of
@@ -97,7 +96,7 @@ package. OnClass files for annotation based on Tabula sapiens are deposited in
 `popv/resources/ontology`. We use [Cell Ontology](https://obofoundry.org/ontology/cl.html)
 as an ontology throughout our experiments. PopV will automatically look for the
 ontology in this folder. If you want to provide your user-edited ontology,
-[our tutorial](tutorials.notebooks.add_celltypes_ontology.ipynb) demonstrates how to generate the Natural
+the [custom celltype tutorial](tutorials/notebooks/add_celltypes_ontology) demonstrates how to generate the Natural
 Language Model used in OnClass for this user-defined ontology.
 
 ```bash
@@ -110,7 +109,7 @@ pip install popv
 
 We provide an example notebook in Google Colab:
 
-- [Tutorial demonstrating use of Tabula sapiens as a reference](tutorials.notebooks.tabula_sapiens_tutorial.ipynb)
+- [Tutorial demonstrating use of Tabula sapiens as a reference](tutorials/notebooks/tabula_sapiens_tutorial)
 
 This notebook will guide you through annotating a dataset based on the annotated
 [Tabula sapiens reference](https://tabula-sapiens-portal.ds.czbiohub.org) and

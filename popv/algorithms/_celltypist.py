@@ -92,10 +92,9 @@ class CELLTYPIST(BaseAlgorithm):
             ].cat.categories[mode(neighbor_values, axis=1).mode.flatten()]
             over_clustering = adata.obs.loc[adata.obs["_predict_cells"] == "relabel", "over_clustering"]
         else:
-            flavor = "rapids" if settings.cuml else "vtraag"
             transformer = "rapids" if settings.cuml else None
             sc.pp.neighbors(adata, n_neighbors=15, use_rep="X_pca", transformer=transformer)
-            sc.tl.louvain(adata, resolution=25.0, key_added="over_clustering", flavor=flavor)
+            sc.tl.leiden(adata, resolution=25.0, key_added="over_clustering")
             over_clustering = adata.obs.loc[adata.obs["_predict_cells"] == "relabel", "over_clustering"]
 
         if adata.uns["_prediction_mode"] == "retrain":

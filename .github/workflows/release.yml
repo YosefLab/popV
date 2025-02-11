@@ -158,6 +158,6 @@ jobs:
           cache-from: type=registry,ref=ghcr.io/yoseflab/popv:buildcache
           cache-to: type=inline,ref=ghcr.io/yoseflab/popv:buildcache
           target: build
-          tags: ghcr.io/yoseflab/popv:py3.11-cu12-${{ inputs.tag }}-${{ matrix.dependencies }},ghcr.io/scverse/popv:py3.11-cu12-stable-${{ matrix.dependencies }}
+          tags: ghcr.io/yoseflab/popv:py3.11-cu12-${{ inputs.tag }}-${{ matrix.dependencies }}
           build-args: |
             DEPENDENCIES=${{ matrix.dependencies }}

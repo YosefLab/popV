@@ -1,11 +1,16 @@
+<!-- markdownlint-disable MD024 -->
+
 # Release notes
 
-Starting from version 0.5.0, this format is based on [Keep a Changelog], and this project adheres
+Starting from version 0.5.0, this format is based on [Keep a Changelog],
+and this project adheres
 to [Semantic Versioning]. Full commit history is available in the
 [commit logs](https://github.com/Yoseflab/popv/commits/).
 
-For the original manuscript version 0.4.0 was used. 0.5.0 is a major rewrite of the project to scale
-to several million cells on workstations with 128 GB of RAM and enable more GPU-accelerated
+For the original manuscript version 0.4.0 was used. 0.5.0 is a
+major rewrite of the project to scale
+to several million cells on workstations with 128 GB of RAM
+and enable more GPU-accelerated
 functions.
 
 ## Version 0.5
@@ -21,7 +26,7 @@ functions.
 
 #### Fixed
 
-- Errors in Google Colab.
+- Fixed errors in Google Colab.
 
 ### 0.5.0
 

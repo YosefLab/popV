@@ -138,7 +138,6 @@ html_logo = "_static/popv_logo.png"
 html_theme_options = {
     "repository_url": repository_url,
     "use_repository_button": True,
-    "logo_only": True,
     "show_toc_level": 1,
     "launch_buttons": {"colab_url": "https://colab.research.google.com"},
     "path_to_docs": "docs/",

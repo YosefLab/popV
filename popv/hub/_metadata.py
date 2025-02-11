@@ -118,13 +118,18 @@ class HubModelCardHelper:
     metrics_report
         A dictionary containing the metrics report for the model.
 
+    Attributes
+    ----------
+    model_card : ModelCard
+        Stores the model card.
+
     Notes
     -----
     It is not required to use this class to create a `ModelCard`. But this helps you do so in a way
-    that is consistent with most other `popV` hub models. You can think of this as a
-    template. The actual template string used can be found in ``popv.hub.template``. The resulting
+    that is consistent with other `popV` hub models. You can think of this as a
+    template. The resulting
     huggingface :class:`~huggingface_hub.ModelCard` can be accessed via the
-    :meth:`~popv.hub.HubModelCardHelper.model_card` property.
+    :attr:`~popv.hub.HubModelCardHelper.model_card` property.
     """
 
     license_info: str

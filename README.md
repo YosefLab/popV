@@ -88,7 +88,7 @@ our tutorials demonstrate how to generate the Natural
 Language Model used in OnClass for this user-defined ontology.
 
 ```bash
-conda create -n yourenv python=3.12
+conda create -n yourenv python=3.11
 conda activate yourenv
 pip install popv
 ```
@@ -110,4 +110,4 @@ Using a cell ontology is a requirement to run OnClass as a prediction algorithm.
 Setting ontology
 to false, will disable this step and allows running popV without using a cell ontology.
 
-[documentation]: https://popv-docs.readthedocs.io/en/latest/
+[documentation]: https://popv.readthedocs.io/en/latest/

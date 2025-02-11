@@ -1,4 +1,4 @@
-name: release
+name: Release
 
 # based off of https://github.com/astral-sh/ruff/blob/main/.github/workflows/release.yaml
 on:

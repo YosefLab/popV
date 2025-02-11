@@ -21,6 +21,7 @@ functions.
 
 - Changed Louvain overclustering for Celltypist to Leiden.
 - Fixed documentation references.
+- Fix release workflow.
 
 ### 0.5.1
 

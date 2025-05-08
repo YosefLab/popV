@@ -76,6 +76,7 @@ class Support_Vector(BaseAlgorithm):
         if adata.uns["_prediction_mode"] == "retrain":
             train_idx = adata.obs["_ref_subsample"]
             train_x = adata[train_idx].layers[self.layer_key] if self.layer_key else adata[train_idx].X
+            train_x = np.array(train_x.todense())
             train_y = adata.obs.loc[train_idx, self.labels_key].cat.codes.to_numpy()
             if settings.cuml:
                 from cuml.svm import LinearSVC
@@ -83,7 +84,6 @@ class Support_Vector(BaseAlgorithm):
 
                 self.classifier_dict["probability"] = self.return_probabilities
                 clf = OneVsRestClassifier(LinearSVC(**self.classifier_dict))
-                train_x = train_x.todense()
                 clf.fit(train_x, train_y)
                 joblib.dump(
                     clf,
@@ -131,7 +131,7 @@ class Support_Vector(BaseAlgorithm):
             for i in range(0, adata.n_obs, shard_size):
                 tmp_x = test_x[i : i + shard_size]
                 names_x = adata.obs_names[i : i + shard_size]
-                tmp_x = tmp_x.todense()
+                tmp_x = np.array(tmp_x.todense())
                 result_df.loc[names_x, self.result_key] = adata.uns["label_categories"][clf.predict(tmp_x).astype(int)]
                 if self.return_probabilities:
                     result_df.loc[names_x, f"{self.result_key}_probabilities"] = np.max(

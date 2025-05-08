@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import sys
 from dataclasses import asdict, dataclass, field
 
 from anndata import AnnData
@@ -194,6 +195,7 @@ class HubModelCardHelper:
             "genomics",
             "single-cell",
             f"anndata_version:{self.anndata_version}",
+            f"python_version:{'.'.join([str(i) for i in sys.version_info[:3]])}",
             "popV",
         ]
         for t in self.tissues:

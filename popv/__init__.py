@@ -6,7 +6,7 @@ import warnings
 if sys.version_info[:2] != (3, 10):
     warnings.warn(
         "Pretrained models on huggingface are trained with Python 3.11. "
-        f"Detected Python {sys.version.split()[0]} will not load these models.",
+        "Detected Python {sys.version.split()[:2]} will not load these models.",
         UserWarning,
         stacklevel=3,
     )

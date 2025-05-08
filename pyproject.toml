@@ -9,8 +9,8 @@ exclude = ["resources/*", "tests/*", "dataset/*"]
 exclude = ["resources/*", "tests/*", "dataset/*"]
 
 [project]
-name = "PopV"
-version = "0.5.0"
+name = "popV"
+version = "0.5.2.post1"
 description = "Consensus prediction of cell type labels with popV"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -21,9 +21,9 @@ authors = [
 maintainers = [
     {name = "Can Ergen", email = "canergen.ac@gmail.com"},
 ]
-urls.Documentation = "https://PopV.readthedocs.io/"
-urls.Source = "https://github.com/YosefLab/PopV.git"
-urls.Home-page = "https://github.com/YosefLab/PopV.git"
+urls.Documentation = "https://popv.readthedocs.io/"
+urls.Source = "https://github.com/YosefLab/popV.git"
+urls.Home-page = "https://github.com/YosefLab/popV.git"
 classifiers = [
   "Development Status :: 4 - Beta",
   "Intended Audience :: Science/Research",
@@ -41,19 +41,17 @@ dependencies = [
     "anndata",
     "bbknn",
     "celltypist",
-    "faiss-cpu",
     "huggingface-hub",
     "onclass",
     "scanorama",
     "scanpy",
     "scikit-misc",
-    "sklearn-ann",
     "scvi-tools",
     "tensorflow",
     "harmony-pytorch",
     "huggingface",
     "xgboost",
-    "louvain",
+    "leidenalg",
     "cellxgene_census",
 ]
 

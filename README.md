@@ -6,7 +6,7 @@
 [![Coverage](https://codecov.io/gh/YosefLab/popv/branch/main/graph/badge.svg?token=KuSsL5q3l7)](https://codecov.io/gh/YosefLab/popv)
 [![Code Style](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/python/black)
 [![Downloads](https://pepy.tech/badge/popv)](https://pepy.tech/project/popv)
-[![Docs](https://readthedocs.org/projects/popv/badge/?version=latest)](https://popv-docs.readthedocs.io/en/latest/)
+[![Docs](https://readthedocs.org/projects/popv/badge/?version=latest)](https://popv.readthedocs.io/en/latest/)
 
 PopV uses popular vote of a variety of cell-type transfer tools to classify
 cell-types in a query dataset based on a test dataset. Using this variety of
@@ -73,6 +73,10 @@ require further manual annotation. PopV also outputs UMAP embeddings of all
 integrated latent spaces if `popv.settings.compute_embedding == True` and computes
 certainties for every used classifier if `popv.settings.return_probabilities == True`.
 
+## Resources
+
+- Tutorials, API reference, and installation guides are available in the [documentation].
+
 ## Installation
 
 We suggest using a package manager like `conda` or `mamba` to install the
@@ -84,7 +88,7 @@ our tutorials demonstrate how to generate the Natural
 Language Model used in OnClass for this user-defined ontology.
 
 ```bash
-conda create -n yourenv python=3.12
+conda create -n yourenv python=3.11
 conda activate yourenv
 pip install popv
 ```
@@ -105,3 +109,5 @@ see also [Osumi-Sutherland et al](https://www.nature.com/articles/s41556-021-007
 Using a cell ontology is a requirement to run OnClass as a prediction algorithm.
 Setting ontology
 to false, will disable this step and allows running popV without using a cell ontology.
+
+[documentation]: https://popv.readthedocs.io/en/latest/

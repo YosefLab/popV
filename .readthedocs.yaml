@@ -13,5 +13,5 @@ python:
         - docsbuild
 submodules:
   include:
-    - "docs/notebooks"
+    - "docs/tutorials/notebooks"
   recursive: true

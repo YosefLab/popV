@@ -380,7 +380,7 @@ class HubModel:
         with cellxgene_census.open_soma() as census:
             var_df = cellxgene_census.get_var(
                 census,
-                organism="homo_sapiens",
+                organism=organism = 'mus_musculus' if 'tabula_muris' in self.repo_name else 'homo_sapiens'
             )
             feature_dict = dict(zip(var_df[gene_symbols], var_df["feature_id"], strict=True))
         adata.var["old_index"] = adata.var_names

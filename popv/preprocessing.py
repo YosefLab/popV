@@ -307,8 +307,11 @@ class Process_Query:
             adata.obs["_labels_annotation"] = self.unknown_celltype_label
             adata.obs["_ref_subsample"] = False
             adata.layers["scaled"] = adata.X.copy()
+            if isinstance(adata.layers["scaled"], scp.csr_matrix) or isinstance(adata.layers["scaled"], scp.coo_matrix):
+                adata.layers["scaled"] = adata.layers["scaled"].toarray()
             adata.layers["scaled"] /= self.ref_adata.var["std"].values
             adata.layers["scaled"].data = np.clip(adata.layers["scaled"].data, -10, 10)
+            adata.layers["scaled"] = scp.csr_matrix(adata.layers["scaled"])
             adata.layers["scaled"] = adata.layers["scaled"].tocsr()
             adata.obsm["X_pca"] = np.array(adata.layers["scaled"] @ self.ref_adata.varm["PCs"])
         return adata

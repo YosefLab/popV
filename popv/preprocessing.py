@@ -296,9 +296,8 @@ class Process_Query:
                 adata.obs.loc[subsample_idx, "_ref_subsample"] = True
             else:
                 adata.obs["_ref_subsample"] = True
-            adata.layers["scaled"] = adata.X.copy()
-            sc.pp.scale(adata, max_value=10, layer="scaled", zero_center=False)
-            sc.pp.pca(adata, layer="scaled", zero_center=False)
+            adata.layers["normalized"] = adata.X.copy()
+            sc.pp.pca(adata, layer="normalized", zero_center=False)
             reference_features = adata.obsm["X_pca"]
             index = NNDescent(reference_features, n_neighbors=30, metric="euclidean")
             index_path = os.path.join(self.save_path_trained_models, "pynndescent_index.joblib")
@@ -306,11 +305,8 @@ class Process_Query:
         else:
             adata.obs["_labels_annotation"] = self.unknown_celltype_label
             adata.obs["_ref_subsample"] = False
-            adata.layers["scaled"] = adata.X.copy()
-            adata.layers["scaled"] /= self.ref_adata.var["std"].values
-            adata.layers["scaled"].data = np.clip(adata.layers["scaled"].data, -10, 10)
-            adata.layers["scaled"] = adata.layers["scaled"].tocsr()
-            adata.obsm["X_pca"] = np.array(adata.layers["scaled"] @ self.ref_adata.varm["PCs"])
+            adata.layers["normalized"] = adata.X.copy()
+            adata.obsm["X_pca"] = np.array(adata.layers["normalized"] @ self.ref_adata.varm["PCs"])
         return adata
 
     def _preprocess(self):

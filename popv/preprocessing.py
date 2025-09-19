@@ -306,10 +306,8 @@ class Process_Query:
         else:
             adata.obs["_labels_annotation"] = self.unknown_celltype_label
             adata.obs["_ref_subsample"] = False
-            adata.layers["scaled"] = adata.X.copy()
-            adata.layers["scaled"] /= self.ref_adata.var["std"].values
+            adata.layers["scaled"] = (adata.X.copy() / self.ref_adata.var["std"].values).tocsr()
             adata.layers["scaled"].data = np.clip(adata.layers["scaled"].data, -10, 10)
-            adata.layers["scaled"] = adata.layers["scaled"].tocsr()
             adata.obsm["X_pca"] = np.array(adata.layers["scaled"] @ self.ref_adata.varm["PCs"])
         return adata
 

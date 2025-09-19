@@ -4,6 +4,8 @@
 buck-out/
 /tests/tmp_testing
 /popv_test_results/
+/popv/docs/tutorials/notebooks/tmp/
+/docs/tutorials/notebooks/tmp
 
 # Compiled files
 .venv/

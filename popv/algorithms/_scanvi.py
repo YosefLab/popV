@@ -9,6 +9,9 @@ import scanpy as sc
 import scvi
 
 from popv import settings
+
+if settings.cuml:
+    import rapids_singlecell as rsc
 from popv.algorithms._base_algorithm import BaseAlgorithm
 
 
@@ -202,7 +205,9 @@ class SCANVI_POPV(BaseAlgorithm):
         adata
             Anndata object. Results are stored in adata.obsm[self.umap_key].
         """
-        transformer = "rapids" if settings.cuml else None
-        sc.pp.neighbors(adata, use_rep=self.embedding_key, transformer=transformer)
-        method = "rapids" if settings.cuml else "umap"
-        adata.obsm[self.umap_key] = sc.tl.umap(adata, copy=True, method=method, **self.embedding_kwargs).obsm["X_umap"]
+        if settings.cuml:
+            rsc.pp.neighbors(adata, use_rep=self.embedding_key)
+            adata.obsm[self.umap_key] = rsc.tl.umap(adata, copy=True, **self.embedding_kwargs).obsm["X_umap"]
+        else:
+            sc.pp.neighbors(adata, use_rep=self.embedding_key)
+            adata.obsm[self.umap_key] = sc.tl.umap(adata, copy=True, **self.embedding_kwargs).obsm["X_umap"]

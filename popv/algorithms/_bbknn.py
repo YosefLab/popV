@@ -10,6 +10,9 @@ from scipy.stats import mode
 from sklearn.neighbors import KNeighborsClassifier
 
 from popv import settings
+
+if settings.cuml:
+    import rapids_singlecell as rsc
 from popv.algorithms._base_algorithm import BaseAlgorithm
 
 
@@ -178,12 +181,9 @@ class KNN_BBKNN(BaseAlgorithm):
         """
         if self.compute_umap_embedding:
             logging.info(f'Saving UMAP of bbknn results to adata.obs["{self.embedding_key}"]')
-            if len(adata.obs[self.batch_key]) < 30 and settings.cuml:
-                method = "rapids"
+            if settings.cuml:
+                rsc.pp.neighbors(adata, use_rep=self.embedding_key)
+                adata.obsm[self.umap_key] = rsc.tl.umap(adata, copy=True, **self.embedding_kwargs).obsm["X_umap"]
             else:
-                logging.warning("Using UMAP instead of RAPIDS as high number of batches leads to OOM.")
-                method = "umap"
-                # RAPIDS not possible here as number of batches drastically increases GPU RAM.
-            adata.obsm[self.umap_key] = sc.tl.umap(adata, copy=True, method=method, **self.embedding_kwargs).obsm[
-                "X_umap"
-            ]
+                sc.pp.neighbors(adata, use_rep=self.embedding_key)
+                adata.obsm[self.umap_key] = sc.tl.umap(adata, copy=True, **self.embedding_kwargs).obsm["X_umap"]

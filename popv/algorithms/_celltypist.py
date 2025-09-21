@@ -11,6 +11,9 @@ import scanpy as sc
 from scipy.stats import mode
 
 from popv import settings
+
+if settings.cuml:
+    import rapids_singlecell as rsc
 from popv.algorithms._base_algorithm import BaseAlgorithm
 
 
@@ -92,9 +95,12 @@ class CELLTYPIST(BaseAlgorithm):
             ].cat.categories[mode(neighbor_values, axis=1).mode.flatten()]
             over_clustering = adata.obs.loc[adata.obs["_predict_cells"] == "relabel", "over_clustering"]
         else:
-            transformer = "rapids" if settings.cuml else None
-            sc.pp.neighbors(adata, n_neighbors=15, use_rep="X_pca", transformer=transformer)
-            sc.tl.leiden(adata, resolution=25.0, key_added="over_clustering")
+            if settings.cuml:
+                rsc.pp.neighbors(adata, n_neighbors=15, use_rep="X_pca")
+                rsc.tl.leiden(adata, resolution=25.0, key_added="over_clustering")
+            else:
+                sc.pp.neighbors(adata, n_neighbors=15, use_rep="X_pca")
+                sc.tl.leiden(adata, resolution=25.0, key_added="over_clustering")
             over_clustering = adata.obs.loc[adata.obs["_predict_cells"] == "relabel", "over_clustering"]
 
         if adata.uns["_prediction_mode"] == "retrain":

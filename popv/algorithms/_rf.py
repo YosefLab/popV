@@ -100,9 +100,19 @@ class Random_Forest(BaseAlgorithm):
             rf.predict(test_x)
         ]
         if self.return_probabilities:
+            probabilities = rf.predict_proba(test_x)
             if f"{self.result_key}_probabilities" not in adata.obs.columns:
                 adata.obs[f"{self.result_key}_probabilities"] = pd.Series(dtype="float64")
+            if f"{self.result_key}_probabilities" not in adata.obsm:
+                adata.obsm[f"{self.result_key}_probabilities"] = pd.DataFrame(
+                    np.nan,
+                    index=adata.obs_names,
+                    columns=adata.uns["label_categories"],
+                )
             adata.obs.loc[
                 adata.obs["_predict_cells"] == "relabel",
                 f"{self.result_key}_probabilities",
-            ] = np.max(rf.predict_proba(test_x), axis=1).astype(float)
+            ] = np.max(probabilities, axis=1).astype(float)
+            adata.obsm[f"{self.result_key}_probabilities"].loc[
+                adata.obs["_predict_cells"] == "relabel", f"{self.result_key}_probabilities"
+            ] = probabilities.astype(float)

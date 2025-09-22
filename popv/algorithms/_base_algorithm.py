@@ -35,6 +35,8 @@ class BaseAlgorithm:
         umap_key
             Key in obsm in which UMAP embedding of integrated data is stored.
         """
+        if settings.cuml:
+            import rapids_singlecell as rsc  # noqa: F401
         self.batch_key = batch_key
         self.labels_key = labels_key
         if seen_result_key is None:

@@ -6,16 +6,15 @@ import os
 import warnings
 
 import anndata
-import joblib
 import numpy as np
 import pandas as pd
 import scanpy as sc
 import scipy.sparse as scp
 import torch
-from pynndescent import NNDescent
 from scanpy._utils import check_nonnegative_integers
 
 from popv import _utils
+from popv._faiss_knn_classifier import FAISSKNNProba
 
 
 class Process_Query:
@@ -300,9 +299,9 @@ class Process_Query:
             sc.pp.scale(adata, max_value=10, layer="scaled", zero_center=False)
             sc.pp.pca(adata, layer="scaled", zero_center=False)
             reference_features = adata.obsm["X_pca"]
-            index = NNDescent(reference_features, n_neighbors=30, metric="euclidean")
-            index_path = os.path.join(self.save_path_trained_models, "pynndescent_index.joblib")
-            joblib.dump(index, open(index_path, "wb"))
+            index = FAISSKNNProba(n_neighbors=30)
+            index.fit(reference_features.astype(np.float32), labels=self.label_categories)
+            index.save(os.path.join(self.save_path_trained_models, "faiss_index"))
         else:
             adata.obs["_labels_annotation"] = self.unknown_celltype_label
             adata.obs["_ref_subsample"] = False
@@ -352,6 +351,10 @@ class Process_Query:
             self.adata = self.adata[self.adata.obs["_batch_annotation"].isin(valid_batches)].copy()
 
         self.adata.obs["_labels_annotation"] = self.adata.obs["_labels_annotation"].astype("category")
+        new_order = [
+            c for c in self.adata.obs["_labels_annotation"].cat.categories.tolist() if c != self.unknown_celltype_label
+        ] + [self.unknown_celltype_label]
+        self.adata.obs["_labels_annotation"] = self.adata.obs["_labels_annotation"].cat.reorder_categories(new_order)
         # Store values as default for current popv in adata
         self.adata.uns["unknown_celltype_label"] = self.unknown_celltype_label
         if self.prediction_mode == "retrain":

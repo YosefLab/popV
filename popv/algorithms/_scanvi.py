@@ -9,9 +9,6 @@ import scanpy as sc
 import scvi
 
 from popv import settings
-
-if settings.cuml:
-    import rapids_singlecell as rsc
 from popv.algorithms._base_algorithm import BaseAlgorithm
 
 
@@ -188,13 +185,16 @@ class SCANVI_POPV(BaseAlgorithm):
         if self.return_probabilities:
             if f"{self.result_key}_probabilities" not in adata.obs.columns:
                 adata.obs[f"{self.result_key}_probabilities"] = pd.Series(dtype="float64")
-            adata.obs.loc[
-                adata.obs["_predict_cells"] == "relabel",
-                f"{self.result_key}_probabilities",
-            ] = np.max(
-                self.model.predict(adata[adata.obs["_predict_cells"] == "relabel"], soft=True),
-                axis=1,
+                adata.obsm[f"{self.result_key}_probabilities"] = pd.DataFrame(
+                    np.nan,
+                    index=adata.obs_names,
+                    columns=adata.uns["label_categories"][:-1],
+                )
+            probs = self.model.predict(adata[adata.obs["_predict_cells"] == "relabel"], soft=True)
+            adata.obs.loc[adata.obs["_predict_cells"] == "relabel", f"{self.result_key}_probabilities"] = np.max(
+                probs, axis=1
             )
+            adata.obsm[f"{self.result_key}_probabilities"].loc[adata.obs["_predict_cells"] == "relabel", :] = probs
 
     def compute_umap(self, adata):
         """
@@ -206,6 +206,8 @@ class SCANVI_POPV(BaseAlgorithm):
             Anndata object. Results are stored in adata.obsm[self.umap_key].
         """
         if settings.cuml:
+            import rapids_singlecell as rsc
+
             rsc.pp.neighbors(adata, use_rep=self.embedding_key)
             adata.obsm[self.umap_key] = rsc.tl.umap(adata, copy=True, **self.embedding_kwargs).obsm["X_umap"]
         else:

@@ -1,18 +1,12 @@
 from __future__ import annotations
 
 import logging
-import os
 
-import joblib
 import numpy as np
 import scanpy as sc
-from scipy.stats import mode
 from sklearn.neighbors import KNeighborsClassifier
 
 from popv import settings
-
-if settings.cuml:
-    import rapids_singlecell as rsc
 from popv.algorithms._base_algorithm import BaseAlgorithm
 
 
@@ -95,48 +89,19 @@ class KNN_BBKNN(BaseAlgorithm):
             AnnData object. Modified inplace.
         """
         logging.info("Integrating data with bbknn")
-        if (
-            adata.uns["_prediction_mode"] == "inference"
-            and "X_umap_bbknn" in adata.obsm
-            and not settings.recompute_embeddings
-        ):
-            index = joblib.load(os.path.join(adata.uns["_save_path_trained_models"], "pynndescent_index.joblib"))
-            query_features = adata.obsm["X_pca"][adata.obs["_dataset"] == "query", :]
-            indices, _ = index.query(query_features.astype(np.float32), k=5)
-
-            neighbor_embedding = adata.obsm["X_umap_bbknn"][adata.obs["_dataset"] == "ref", :][indices].astype(
-                np.float32
+        if len(adata.obs[self.batch_key].unique()) > 100:
+            logging.warning("Using PyNNDescent instead of FAISS as high number of batches leads to OOM.")
+            self.method_kwargs["neighbors_within_batch"] = 1  # Reduce memory usage.
+            self.method_kwargs["pynndescent_n_neighbors"] = 10  # Reduce memory usage.
+            sc.external.pp.bbknn(
+                adata, batch_key=self.batch_key, use_faiss=False, use_rep="X_pca", **self.method_kwargs
             )
-            adata.obsm[self.umap_key][adata.obs["_dataset"] == "query", :] = np.mean(neighbor_embedding, axis=1)
-            adata.obsm[self.umap_key] = adata.obsm[self.umap_key].astype(np.float32)
-
-            neighbor_probabilities = adata.obs[f"{self.result_key}_probabilities"][adata.obs["_dataset"] == "ref", :][
-                indices
-            ].astype(np.float32)
-            adata.obs.loc[adata.obs["_dataset"] == "query", f"{self.result_key}_probabilities"] = np.mean(
-                neighbor_probabilities, axis=1
-            )
-
-            neighbor_prediction = adata.obs[f"{self.result_key}"][adata.obs["_dataset"] == "ref", :][indices].astype(
-                np.float32
-            )
-            adata.obs.loc[adata.obs["_dataset"] == "query", f"{self.result_key}"] = mode(neighbor_prediction, axis=1)
         else:
-            if len(adata.obs[self.batch_key].unique()) > 100:
-                logging.warning("Using PyNNDescent instead of FAISS as high number of batches leads to OOM.")
-                self.method_kwargs["neighbors_within_batch"] = 1  # Reduce memory usage.
-                self.method_kwargs["pynndescent_n_neighbors"] = 10  # Reduce memory usage.
-                sc.external.pp.bbknn(
-                    adata, batch_key=self.batch_key, use_faiss=False, use_rep="X_pca", **self.method_kwargs
-                )
-            else:
-                sc.external.pp.bbknn(
-                    adata, batch_key=self.batch_key, use_faiss=True, use_rep="X_pca", **self.method_kwargs
-                )
+            sc.external.pp.bbknn(adata, batch_key=self.batch_key, use_faiss=True, use_rep="X_pca", **self.method_kwargs)
 
     def predict(self, adata):
         """
-        Predict celltypes using Celltypist.
+        Predict celltypes using BBKNN kNN.
 
         Parameters
         ----------
@@ -168,7 +133,9 @@ class KNN_BBKNN(BaseAlgorithm):
         adata.obs[self.result_key] = adata.uns["label_categories"][knn.predict(test_distances)]
 
         if self.return_probabilities:
-            adata.obs[f"{self.result_key}_probabilities"] = np.max(knn.predict_proba(test_distances), axis=1)
+            probabilities = knn.predict_proba(test_distances)
+            adata.obs[f"{self.result_key}_probabilities"] = np.max(probabilities, axis=1)
+            adata.obsm[f"{self.result_key}_probabilities"] = probabilities
 
     def compute_umap(self, adata):
         """
@@ -182,6 +149,8 @@ class KNN_BBKNN(BaseAlgorithm):
         if self.compute_umap_embedding:
             logging.info(f'Saving UMAP of bbknn results to adata.obs["{self.embedding_key}"]')
             if settings.cuml:
+                import rapids_singlecell as rsc
+
                 rsc.pp.neighbors(adata, use_rep=self.embedding_key)
                 adata.obsm[self.umap_key] = rsc.tl.umap(adata, copy=True, **self.embedding_kwargs).obsm["X_umap"]
             else:

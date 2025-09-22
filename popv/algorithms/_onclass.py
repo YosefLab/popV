@@ -131,6 +131,9 @@ class ONCLASS(BaseAlgorithm):
             }
 
         result_df = pd.DataFrame(required_columns)
+        result_df_probabilities = pd.DataFrame(
+            index=subset.obs_names, columns=adata.uns["label_categories"][:-1], dtype=float
+        )
         shard_size = int(settings.shard_size)
         for i in range(0, subset.n_obs, shard_size):
             tmp_x = test_x[i : i + shard_size]
@@ -158,6 +161,7 @@ class ONCLASS(BaseAlgorithm):
                 if self.return_probabilities:
                     result_df.loc[names_x, f"{self.result_key}_probabilities"] = np.max(onclass_pred, axis=1)
                     result_df.loc[names_x, f"{self.seen_result_key}_probabilities"] = np.max(onclass_pred, axis=1)
+                    result_df_probabilities.loc[names_x, :] = onclass_pred
             else:
                 onclass_pred = train_model.Predict(
                     corr_test_feature,
@@ -177,6 +181,8 @@ class ONCLASS(BaseAlgorithm):
                         onclass_pred[1], axis=1
                     ) / onclass_pred[1].sum(1)
                     result_df.loc[names_x, f"{self.seen_result_key}_probabilities"] = np.max(onclass_pred[0], axis=1)
+                    print(onclass_pred[0])
+                    result_df_probabilities.loc[names_x, :] = onclass_pred[0]
         for col in required_columns.keys():
             if col not in adata.obs.columns:
                 if "probabilities" in col:
@@ -185,3 +191,13 @@ class ONCLASS(BaseAlgorithm):
                     adata.obs[col] = adata.uns["unknown_celltype_label"]
                     adata.obs[col] = adata.obs[col].astype(str)  # Set dtype to string
         adata.obs.loc[adata.obs["_predict_cells"] == "relabel", result_df.columns] = result_df
+        if self.return_probabilities:
+            if f"{self.result_key}_probabilities" not in adata.obsm:
+                adata.obsm[f"{self.result_key}_probabilities"] = pd.DataFrame(
+                    np.nan,
+                    index=adata.obs_names,
+                    columns=adata.uns["label_categories"],
+                )
+            adata.obsm[f"{self.result_key}_probabilities"].loc[adata.obs["_predict_cells"] == "relabel", :] = (
+                result_df_probabilities.loc[adata.obs_names[adata.obs["_predict_cells"] == "relabel"], :]
+            )

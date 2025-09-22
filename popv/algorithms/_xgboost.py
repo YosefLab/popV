@@ -84,8 +84,6 @@ class XGboost(BaseAlgorithm):
             bst.load_model(os.path.join(adata.uns["_save_path_trained_models"], "xgboost_classifier.model"))
 
         output_probabilities = bst.predict(dtest)
-        unassigned_idx = list(adata.uns["label_categories"]).index(adata.uns["unknown_celltype_label"])
-        output_probabilities[:, unassigned_idx] = 0.0
         if self.result_key not in adata.obs.columns:
             adata.obs[self.result_key] = adata.uns["unknown_celltype_label"]
         adata.obs.loc[adata.obs["_predict_cells"] == "relabel", self.result_key] = adata.uns["label_categories"][
@@ -94,7 +92,16 @@ class XGboost(BaseAlgorithm):
         if self.return_probabilities:
             if f"{self.result_key}_probabilities" not in adata.obs.columns:
                 adata.obs[f"{self.result_key}_probabilities"] = pd.Series(dtype="float64")
+                adata.obsm[f"{self.result_key}_probabilities"] = pd.DataFrame(
+                    np.nan,
+                    index=adata.obs_names,
+                    columns=adata.uns["label_categories"][:-1],
+                )
             adata.obs.loc[
                 adata.obs["_predict_cells"] == "relabel",
                 f"{self.result_key}_probabilities",
             ] = np.max(output_probabilities, axis=1).astype(float)
+            print("SSS", output_probabilities.shape, adata.obsm[f"{self.result_key}_probabilities"].shape)
+            adata.obsm[f"{self.result_key}_probabilities"].loc[adata.obs["_predict_cells"] == "relabel", :] = (
+                output_probabilities[:, :-1].astype(float)
+            )

@@ -43,7 +43,6 @@ class Support_Vector(BaseAlgorithm):
         layer_key: str | None = None,
         result_key: str | None = "popv_svm_prediction",
         classifier_dict: str | None = {},
-        train_both: bool = False,
     ) -> None:
         super().__init__(
             batch_key=batch_key,
@@ -59,7 +58,6 @@ class Support_Vector(BaseAlgorithm):
         }
         if classifier_dict is not None:
             self.classifier_dict.update(classifier_dict)
-        self.train_both = train_both
 
     def predict(self, adata):
         """
@@ -79,77 +77,64 @@ class Support_Vector(BaseAlgorithm):
             train_x = np.array(train_x.todense())
             train_y = adata.obs.loc[train_idx, self.labels_key].cat.codes.to_numpy()
             if settings.cuml:
-                from cuml.svm import LinearSVC
-                from sklearn.multiclass import OneVsRestClassifier
+                from cuml.svm import LinearSVC as CuMLLinearSVC
 
                 self.classifier_dict["probability"] = self.return_probabilities
-                clf = OneVsRestClassifier(LinearSVC(**self.classifier_dict))
-                clf.fit(train_x, train_y)
-                joblib.dump(
-                    clf,
-                    open(
-                        os.path.join(
-                            adata.uns["_save_path_trained_models"],
-                            "svm_classifier_cuml.joblib",
-                        ),
-                        "wb",
-                    ),
-                )
+                cuml_clf = CuMLLinearSVC(**self.classifier_dict)
+                cuml_clf.fit(train_x, train_y)
                 self.classifier_dict.pop("probability")
-            if not settings.cuml or self.train_both:
+                sk_clf = svm.LinearSVC()
+                sk_clf.coef_ = cuml_clf.coef_.to_output("numpy")
+                sk_clf.intercept_ = cuml_clf.intercept_.to_output("numpy")
+                sk_clf.classes_ = cuml_clf.classes_.to_output("numpy")
+                clf = CalibratedClassifierCV(sk_clf, cv="prefit")
+            else:
                 clf = CalibratedClassifierCV(svm.LinearSVC(**self.classifier_dict))
-                clf.fit(train_x, train_y)
-                joblib.dump(
-                    clf,
-                    open(
-                        os.path.join(
-                            adata.uns["_save_path_trained_models"],
-                            "svm_classifier.joblib",
-                        ),
-                        "wb",
+            clf.fit(train_x, train_y)
+            joblib.dump(
+                clf,
+                open(
+                    os.path.join(
+                        adata.uns["_save_path_trained_models"],
+                        "svm_classifier.joblib",
                     ),
-                )
+                    "wb",
+                ),
+            )
 
         if self.return_probabilities:
             required_columns = [self.result_key, f"{self.result_key}_probabilities"]
+            results_df_probabilities = pd.DataFrame(
+                index=adata.obs_names, columns=adata.uns["label_categories"][:-1], dtype=float
+            )
         else:
             required_columns = [self.result_key]
 
         result_df = pd.DataFrame(index=adata.obs_names, columns=required_columns, dtype=float)
         result_df[self.result_key] = result_df[self.result_key].astype("object")
-        if settings.cuml:
-            clf = joblib.load(
-                open(
-                    os.path.join(
-                        adata.uns["_save_path_trained_models"],
-                        "svm_classifier_cuml.joblib",
-                    ),
-                    "rb",
-                )
+        clf = joblib.load(
+            open(
+                os.path.join(adata.uns["_save_path_trained_models"], "svm_classifier.joblib"),
+                "rb",
             )
-            shard_size = int(settings.shard_size)
-            for i in range(0, adata.n_obs, shard_size):
-                tmp_x = test_x[i : i + shard_size]
-                names_x = adata.obs_names[i : i + shard_size]
-                tmp_x = np.array(tmp_x.todense())
-                result_df.loc[names_x, self.result_key] = adata.uns["label_categories"][clf.predict(tmp_x).astype(int)]
-                if self.return_probabilities:
-                    result_df.loc[names_x, f"{self.result_key}_probabilities"] = np.max(
-                        clf.predict_proba(tmp_x), axis=1
-                    ).astype(float)
-        else:
-            clf = joblib.load(
-                open(
-                    os.path.join(adata.uns["_save_path_trained_models"], "svm_classifier.joblib"),
-                    "rb",
-                )
-            )
-            result_df[self.result_key] = adata.uns["label_categories"][clf.predict(test_x)]
-            if self.return_probabilities:
-                result_df[f"{self.result_key}_probabilities"] = np.max(clf.predict_proba(test_x), axis=1)
+        )
+        result_df[self.result_key] = adata.uns["label_categories"][clf.predict(test_x).astype(int)]
+        if self.return_probabilities:
+            probabilities = clf.predict_proba(test_x)
+            result_df[f"{self.result_key}_probabilities"] = np.max(probabilities, axis=1)
+            results_df_probabilities = probabilities
+
         for col in required_columns:
             if col not in adata.obs.columns:
                 adata.obs[col] = (
                     pd.Series(dtype="float64") if "probabilities" in col else adata.uns["unknown_celltype_label"]
                 )
         adata.obs.loc[adata.obs["_predict_cells"] == "relabel", result_df.columns] = result_df
+        if self.return_probabilities:
+            if f"{self.result_key}_probabilities" not in adata.obsm.keys():
+                adata.obsm[f"{self.result_key}_probabilities"] = pd.DataFrame(
+                    index=adata.obs_names, columns=adata.uns["label_categories"][:-1], dtype=float
+                )
+            adata.obsm[f"{self.result_key}_probabilities"].loc[adata.obs["_predict_cells"] == "relabel", :] = (
+                results_df_probabilities
+            )

@@ -382,3 +382,7 @@ class Process_Query:
 
             with open(os.path.join(self.save_path_trained_models, "preprocessing.json"), "w") as f:
                 json.dump(data, f, indent=4)
+            ref_idx = self.adata.obs["_labelled_train_indices"]
+            self.adata[ref_idx].obs["_labels_annotation"].cat.codes.to_csv(
+                os.path.join(self.save_path_trained_models, "ref_labels.csv")
+            )

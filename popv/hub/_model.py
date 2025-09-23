@@ -184,6 +184,7 @@ class HubModel:
         repo_create: bool = False,
         repo_create_kwargs: dict | None = None,
         collection_slug: str | None = None,
+        delete_existing_files: bool = False,
         **kwargs,
     ):
         """Push this model to HuggingFace.
@@ -205,6 +206,8 @@ class HubModel:
             ``repo_create=True``.
         collection_slug
             The internal name in HuggingFace for a dataset collection.
+        delete_existing_files
+            Whether to delete existing files in the repo before uploading new ones.
         **kwargs
             Additional keyword arguments passed into :meth:`huggingface_hub.HfApi.upload_file`.
         """
@@ -220,16 +223,17 @@ class HubModel:
             repo_create_kwargs = repo_create_kwargs or {}
             create_repo(repo_name, token=repo_token, **repo_create_kwargs)
         api = HfApi()
-        # upload the model card
-        self.model_card.push_to_hub(repo_name, token=repo_token)
         # upload the model
         api.upload_folder(
             folder_path=self._local_dir,
             repo_id=repo_name,
             token=repo_token,
             ignore_patterns="*h5ad",  # Ignore all h5ad files.
+            delete_patterns="*" if delete_existing_files else None,
             **kwargs,
         )
+        # upload the model card
+        self.model_card.push_to_hub(repo_name, token=repo_token)
         # upload the metadata
         api.upload_file(
             path_or_fileobj=json.dumps(asdict(self.metadata), indent=4).encode(),

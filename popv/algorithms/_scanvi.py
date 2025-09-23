@@ -135,7 +135,7 @@ class SCANVI_POPV(BaseAlgorithm):
                     max_epochs=self.max_epochs_unsupervised,
                     accelerator=settings.accelerator,
                     plan_kwargs={"n_epochs_kl_warmup": 20},
-                    devices=[settings.device],
+                    devices=[settings.device] if settings.cuml else settings.n_jobs,
                 )
 
             self.model = scvi.model.SCANVI.from_scvi_model(
@@ -186,6 +186,7 @@ class SCANVI_POPV(BaseAlgorithm):
         if self.return_probabilities:
             if f"{self.result_key}_probabilities" not in adata.obs.columns:
                 adata.obs[f"{self.result_key}_probabilities"] = pd.Series(dtype="float64")
+            if f"{self.result_key}_probabilities" not in adata.obsm:
                 adata.obsm[f"{self.result_key}_probabilities"] = pd.DataFrame(
                     np.nan,
                     index=adata.obs_names,

@@ -107,12 +107,12 @@ class Random_Forest(BaseAlgorithm):
                 adata.obsm[f"{self.result_key}_probabilities"] = pd.DataFrame(
                     np.nan,
                     index=adata.obs_names,
-                    columns=adata.uns["label_categories"],
+                    columns=adata.uns["label_categories"][:-1],
                 )
             adata.obs.loc[
                 adata.obs["_predict_cells"] == "relabel",
                 f"{self.result_key}_probabilities",
             ] = np.max(probabilities, axis=1).astype(float)
-            adata.obsm[f"{self.result_key}_probabilities"].loc[
-                adata.obs["_predict_cells"] == "relabel", f"{self.result_key}_probabilities"
-            ] = probabilities.astype(float)
+            adata.obsm[f"{self.result_key}_probabilities"].loc[adata.obs["_predict_cells"] == "relabel", :] = (
+                probabilities.astype(float)
+            )

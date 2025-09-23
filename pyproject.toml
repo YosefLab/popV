@@ -41,6 +41,7 @@ dependencies = [
     "anndata",
     "bbknn",
     "celltypist",
+    "harmonypy",
     "huggingface-hub",
     "onclass",
     "scanorama",

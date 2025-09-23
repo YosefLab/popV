@@ -86,9 +86,9 @@ class KNN_HARMONY(BaseAlgorithm):
         ):
             self.recompute_classifier = False
             knn = FAISSKNNProba(n_neighbors=self.classifier_dict["n_neighbors"])
-            knn = knn.load(os.path.join(adata.uns["_save_path_trained_models"], "harmony_knn_classifier"))
+            knn = knn.load(adata.uns["_save_path_trained_models"], "harmony_knn_classifier")
             query_features = adata.obsm["X_pca"][adata.obs["_dataset"] == "query", :]
-            indices = knn.query(query_features.astype(np.float32), k=5)
+            indices = knn.query(query_features.astype(np.float32), n_neighbors=5)
             neighbor_values = adata.obsm[self.embedding_key][adata.obs["_dataset"] == "ref", :][indices].astype(
                 np.float32
             )
@@ -106,7 +106,7 @@ class KNN_HARMONY(BaseAlgorithm):
                     correction_method="fast",
                 )
             else:
-                adata.obsm[self.embedding_key] = sc.external.pp.harmony_integrate(
+                sc.external.pp.harmony_integrate(
                     adata, key=self.batch_key, basis="X_pca", adjusted_basis=self.embedding_key
                 )
         else:
@@ -125,10 +125,7 @@ class KNN_HARMONY(BaseAlgorithm):
 
         if self.recompute_classifier:
             knn = FAISSKNNProba(n_neighbors=self.classifier_dict["n_neighbors"])
-
-            if adata.uns["_prediction_mode"] == "retrain":
-                ref_idx = adata.obs["_labelled_train_indices"]
-
+            ref_idx = adata.obs["_labelled_train_indices"]
             train_X = adata[ref_idx].obsm[self.embedding_key].copy()
             train_Y = adata.obs.loc[ref_idx, self.labels_key].cat.codes.to_numpy()
 
@@ -138,9 +135,7 @@ class KNN_HARMONY(BaseAlgorithm):
                     os.path.join(adata.uns["_save_path_trained_models"], "harmony_knn_classifier"),
                 )
         else:
-            knn = knn.load(
-                os.path.join(adata.uns["_save_path_trained_models"], "harmony_knn_classifier"),
-            )
+            knn = knn.load(adata.uns["_save_path_trained_models"], "harmony_knn_classifier")
 
         # save_results
         embedding = adata[adata.obs["_predict_cells"] == "relabel"].obsm[self.embedding_key]

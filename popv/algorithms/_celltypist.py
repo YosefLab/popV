@@ -83,11 +83,11 @@ class CELLTYPIST(BaseAlgorithm):
             and "over_clustering" in adata.obs
             and not settings.recompute_embeddings
         ):
-            knn = FAISSKNNProba(n_neighbors=self.classifier_dict["n_neighbors"])
-            knn = knn.load(os.path.join(adata.uns["_save_path_trained_models"], "faiss_index"))
+            knn = FAISSKNNProba(n_neighbors=5)
+            knn = knn.load(adata.uns["_save_path_trained_models"], "faiss_index")
 
             query_features = adata.obsm["X_pca"][adata.obs["_dataset"] == "query", :]
-            indices, _ = knn.query(query_features.astype(np.float32), k=5)
+            indices = knn.query(query_features.astype(np.float32), n_neighbors=5)
             neighbor_values = adata.obs.loc[adata.obs["_dataset"] == "ref", "over_clustering"].cat.codes.values[indices]
             adata.obs.loc[adata.obs["_dataset"] == "query", "over_clustering"] = adata.obs[
                 "over_clustering"

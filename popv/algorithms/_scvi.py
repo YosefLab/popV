@@ -140,13 +140,13 @@ class KNN_SCVI(BaseAlgorithm):
 
         if adata.uns["_prediction_mode"] == "fast":
             self.train_kwargs["max_epochs"] = 1
-            model.train(**self.train_kwargs, devices=[settings.device])
+            model.train(**self.train_kwargs, devices=[settings.device] if settings.cuml else settings.n_jobs)
         else:
             if self.max_epochs is None:
                 self.max_epochs = min(round((20000 / adata.n_obs) * 200), 200)
             print(f"Retraining scvi for {self.max_epochs} epochs.")
             self.train_kwargs["max_epochs"] = self.max_epochs
-            model.train(**self.train_kwargs, devices=[settings.device])
+            model.train(**self.train_kwargs, devices=[settings.device] if settings.cuml else settings.n_jobs)
 
             if adata.uns["_save_path_trained_models"] and adata.uns["_prediction_mode"] == "retrain":
                 save_path = os.path.join(adata.uns["_save_path_trained_models"], "scvi")
@@ -188,9 +188,7 @@ class KNN_SCVI(BaseAlgorithm):
                 os.path.join(adata.uns["_save_path_trained_models"], "scvi_knn_classifier"),
             )
         else:
-            knn = knn.load(
-                os.path.join(adata.uns["_save_path_trained_models"], "scvi_knn_classifier"),
-            )
+            knn = knn.load(adata.uns["_save_path_trained_models"], "scvi_knn_classifier")
 
         # save_results
         embedding = adata[adata.obs["_predict_cells"] == "relabel"].obsm[self.embedding_key]

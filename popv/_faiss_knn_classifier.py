@@ -1,3 +1,5 @@
+import os
+
 import faiss
 import numpy as np
 import pandas as pd
@@ -75,7 +77,7 @@ class FAISSKNNProba:
         faiss.write_index(self.index, f"{path_prefix}.index")
 
     @classmethod
-    def load(cls, path_prefix, n_neighbors=5):
+    def load(cls, path_prefix, index, n_neighbors=5):
         """
         Load FAISS index and metadata from disk.
 
@@ -86,8 +88,9 @@ class FAISSKNNProba:
         n_neighbors : int
             Number of neighbors to use
         """
-        obj = cls(n_neighbors=n_neighbors, use_gpu=False)
-        obj.index = faiss.read_index(f"{path_prefix}.index")
-        labels = pd.read_csv(f"{path_prefix}reference_labels.csv")
-        obj.labels = labels.cat.codes.to_numpy()
+        obj = cls(n_neighbors=n_neighbors)
+        obj.index = faiss.read_index(os.path.join(path_prefix, f"{index}.index"))
+        labels = pd.read_csv(os.path.join(path_prefix, "ref_labels.csv"), index_col=0)
+        print(labels)
+        obj.labels = labels.iloc[:, 0].to_numpy()
         return obj

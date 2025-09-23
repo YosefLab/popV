@@ -71,9 +71,9 @@ class KNN_SCANORAMA(BaseAlgorithm):
         if method_kwargs is not None:
             self.method_kwargs.update(method_kwargs)
 
-        self.classifier_kwargs = {"weights": "uniform", "n_neighbors": 15}
+        self.classifier_dict = {"weights": "uniform", "n_neighbors": 15}
         if classifier_kwargs is not None:
-            self.classifier_kwargs.update(classifier_kwargs)
+            self.classifier_dict.update(classifier_kwargs)
 
         self.embedding_kwargs = {
             "min_dist": 0.1,
@@ -113,16 +113,17 @@ class KNN_SCANORAMA(BaseAlgorithm):
         ref_idx = adata.obs["_labelled_train_indices"]
         train_X = adata[ref_idx].obsm[self.embedding_key]
         train_Y = adata.obs.loc[ref_idx, self.labels_key].cat.codes.to_numpy()
+        test_X = adata.obsm[self.embedding_key]
 
         knn = FAISSKNNProba(n_neighbors=self.classifier_dict["n_neighbors"])
         knn.fit(train_X, train_Y)
-        knn_pred = knn.predict(train_X, adata.uns["label_categories"][:-1])
+        knn_pred = knn.predict(test_X, adata.uns["label_categories"][:-1])
 
         # save_results
         adata.obs[self.result_key] = knn_pred
 
         if self.return_probabilities:
-            probabilities = knn.predict_proba(train_X, adata.uns["label_categories"][:-1])
+            probabilities = knn.predict_proba(test_X, adata.uns["label_categories"][:-1])
             adata.obs[f"{self.result_key}_probabilities"] = np.max(probabilities, axis=1)
             adata.obsm[f"{self.result_key}_probabilities"] = probabilities
 

@@ -22,7 +22,7 @@ class FAISSKNNProba:
         cpu_index = faiss.IndexFlatL2(d)
 
         if settings.cuml:
-            gpu_index = faiss.index_cpu_to_gpu(self.res, 0, cpu_index)
+            gpu_index = faiss.index_cpu_to_gpu(self.res, settings.device, cpu_index)
             gpu_index.add(X)
             self.index = faiss.index_gpu_to_cpu(gpu_index)
         else:
@@ -34,7 +34,7 @@ class FAISSKNNProba:
     def query(self, X, n_neighbors):
         X = X.astype("float32")
         if settings.cuml:
-            index = faiss.index_cpu_to_gpu(self.res, 0, self.index)
+            index = faiss.index_cpu_to_gpu(self.res, settings.device, self.index)
         else:
             index = self.index
         _, I = index.search(X, n_neighbors)
@@ -43,7 +43,7 @@ class FAISSKNNProba:
     def predict(self, X, classes):
         X = X.astype("float32")
         if settings.cuml:
-            index = faiss.index_cpu_to_gpu(self.res, 0, self.index)
+            index = faiss.index_cpu_to_gpu(self.res, settings.device, self.index)
         else:
             index = self.index
         _, I = index.search(X, self.n_neighbors)
@@ -53,7 +53,7 @@ class FAISSKNNProba:
     def predict_proba(self, X, classes):
         X = X.astype("float32")
         if settings.cuml:
-            index = faiss.index_cpu_to_gpu(self.res, 0, self.index)
+            index = faiss.index_cpu_to_gpu(self.res, settings.device, self.index)
         else:
             index = self.index
         _, I = index.search(X, self.n_neighbors)

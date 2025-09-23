@@ -90,14 +90,17 @@ class KNN_BBKNN(BaseAlgorithm):
         """
         logging.info("Integrating data with bbknn")
         if len(adata.obs[self.batch_key].unique()) > 100:
-            logging.warning("Using PyNNDescent instead of FAISS as high number of batches leads to OOM.")
-            self.method_kwargs["neighbors_within_batch"] = 1  # Reduce memory usage.
-            self.method_kwargs["pynndescent_n_neighbors"] = 10  # Reduce memory usage.
-            sc.external.pp.bbknn(
-                adata, batch_key=self.batch_key, use_faiss=False, use_rep="X_pca", **self.method_kwargs
+            self.method_kwargs["neighbors_within_batch"] = 1
+        if settings.cuml:
+            import rapids_singlecell as rsc
+
+            self.method_kwargs.pop("approx", None)  # approx not supported in rsc
+            self.method_kwargs.pop("use_annoy", None)  # use_annoy not supported in rsc
+            rsc.pp.bbknn(
+                adata, batch_key=self.batch_key, use_rep="X_pca", algorithm="ivfflat", **self.method_kwargs, trim=0
             )
         else:
-            sc.external.pp.bbknn(adata, batch_key=self.batch_key, use_faiss=True, use_rep="X_pca", **self.method_kwargs)
+            sc.external.pp.bbknn(adata, batch_key=self.batch_key, use_rep="X_pca", **self.method_kwargs)
 
     def predict(self, adata):
         """
@@ -147,7 +150,7 @@ class KNN_BBKNN(BaseAlgorithm):
             AnnData object. Results are stored in adata.obsm[self.umap_key].
         """
         if self.compute_umap_embedding:
-            logging.info(f'Saving UMAP of bbknn results to adata.obs["{self.embedding_key}"]')
+            logging.info(f'Saving UMAP of BBKNN results to adata.obsm["{self.umap_key}"]')
             if settings.cuml:
                 import rapids_singlecell as rsc
 

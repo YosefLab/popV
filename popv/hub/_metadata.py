@@ -23,6 +23,8 @@ class HubMetadata:
         The version of `popV` that the model was trained with.
     anndata_version
         The version of anndata used during model training.
+    scikit_learn_version
+        The version of scikit-learn used during model training.
     setup_dict
         The setup dictionary used to preprocess the data.
     prediction_keys
@@ -33,22 +35,27 @@ class HubMetadata:
         The keyword arguments used in the methods.
     cellxgene_url
         Link to the data in the CELLxGENE portal (viewer).
+    organism
+        The organism of the data.
     """
 
     popv_version: str
     anndata_version: str
+    scikit_learn_version: str
     setup_dict: dict
     prediction_keys: list[str]
     method_kwargs: dict
     methods: list[str]
     method_kwargs: dict
     cellxgene_url: str | None = None
+    organism: str | None = None
 
     @classmethod
     def from_anndata(
         cls,
         adata: AnnData,
         anndata_version: str,
+        scikit_learn_version: str,
         popv_version: str,
         **kwargs,
     ):
@@ -60,6 +67,8 @@ class HubMetadata:
             The AnnData object used to train the model.
         anndata_version
             The version of anndata used during model training.
+        scikit_learn_version
+            The version of scikit-learn used during model training.
         popv_version
             The version of `popV` that the model was trained with.
         kwargs
@@ -73,6 +82,7 @@ class HubMetadata:
         return cls(
             popv_version=popv_version,
             anndata_version=anndata_version,
+            scikit_learn_version=scikit_learn_version,
             setup_dict=setup_dict,
             prediction_keys=prediction_keys,
             methods=methods,
@@ -108,6 +118,8 @@ class HubModelCardHelper:
         The version of `scvi-tools` that the model was trained with.
     anndata_version
         The version of anndata used during model training.
+    scikit_learn_version
+        The version of scikit-learn used during model training.
     tissues
         The tissues of the training data.
     cellxgene_url
@@ -135,6 +147,8 @@ class HubModelCardHelper:
 
     license_info: str
     anndata_version: str
+    scikit_learn_version: str
+    organism: str
     tissues: list[str] = field(default_factory=list)
     cellxgene_url: str | None = None
     description: str = "To be added..."
@@ -151,6 +165,8 @@ class HubModelCardHelper:
         local_dir: str,
         license_info: str,
         anndata_version: str,
+        scikit_learn_version: str,
+        organism: str,
         metrics_report: str | None = None,
         **kwargs,
     ):
@@ -164,6 +180,10 @@ class HubModelCardHelper:
             The license information for the model.
         anndata_version
             The version of anndata used during model training.
+        scikit_learn_version
+            The version of scikit-learn used during model training.
+        organism
+            The organism of the data.
         metrics_report
             Path to the json with stored metrics report.
         data_is_minified
@@ -184,6 +204,8 @@ class HubModelCardHelper:
         return cls(
             license_info,
             anndata_version,
+            scikit_learn_version,
+            organism,
             metrics_report=metrics_report,
             **kwargs,
         )
@@ -195,6 +217,8 @@ class HubModelCardHelper:
             "genomics",
             "single-cell",
             f"anndata_version:{self.anndata_version}",
+            f"scikit_learn_version:{self.scikit_learn_version}",
+            f"organism:{self.organism}",
             f"python_version:{'.'.join([str(i) for i in sys.version_info[:3]])}",
             "popV",
         ]

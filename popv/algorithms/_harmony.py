@@ -176,7 +176,7 @@ class KNN_HARMONY(BaseAlgorithm):
             Anndata object. Results are stored in adata.obsm[self.umap_key].
         """
         if self.compute_umap_embedding:
-            logging.info(f'Saving UMAP of harmony results to adata.obs["{self.umap_key}"]')
+            logging.info(f'Saving UMAP of harmony results to adata.obsm["{self.umap_key}"]')
             if settings.cuml:
                 import rapids_singlecell as rsc
 

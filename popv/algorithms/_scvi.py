@@ -140,11 +140,13 @@ class KNN_SCVI(BaseAlgorithm):
 
         if adata.uns["_prediction_mode"] == "fast":
             self.train_kwargs["max_epochs"] = 1
-            model.train(**self.train_kwargs)
+            model.train(**self.train_kwargs, devices=[settings.device])
         else:
             if self.max_epochs is None:
                 self.max_epochs = min(round((20000 / adata.n_obs) * 200), 200)
-            model.train(**self.train_kwargs)
+            print(f"Retraining scvi for {self.max_epochs} epochs.")
+            self.train_kwargs["max_epochs"] = self.max_epochs
+            model.train(**self.train_kwargs, devices=[settings.device])
 
             if adata.uns["_save_path_trained_models"] and adata.uns["_prediction_mode"] == "retrain":
                 save_path = os.path.join(adata.uns["_save_path_trained_models"], "scvi")
@@ -224,7 +226,7 @@ class KNN_SCVI(BaseAlgorithm):
             Anndata object. Results are stored in adata.obsm[self.umap_key].
         """
         if self.compute_umap_embedding:
-            logging.info(f'Saving UMAP of scvi results to adata.obs["{self.umap_key}"]')
+            logging.info(f'Saving UMAP of scVI results to adata.obsm["{self.umap_key}"]')
             if settings.cuml:
                 import rapids_singlecell as rsc
 

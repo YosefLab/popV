@@ -135,6 +135,7 @@ class SCANVI_POPV(BaseAlgorithm):
                     max_epochs=self.max_epochs_unsupervised,
                     accelerator=settings.accelerator,
                     plan_kwargs={"n_epochs_kl_warmup": 20},
+                    devices=[settings.device],
                 )
 
             self.model = scvi.model.SCANVI.from_scvi_model(
@@ -205,11 +206,13 @@ class SCANVI_POPV(BaseAlgorithm):
         adata
             Anndata object. Results are stored in adata.obsm[self.umap_key].
         """
-        if settings.cuml:
-            import rapids_singlecell as rsc
+        if self.compute_umap_embedding:
+            logging.info(f'Saving UMAP of BBKNN results to adata.obsm["{self.umap_key}"]')
+            if settings.cuml:
+                import rapids_singlecell as rsc
 
-            rsc.pp.neighbors(adata, use_rep=self.embedding_key)
-            adata.obsm[self.umap_key] = rsc.tl.umap(adata, copy=True, **self.embedding_kwargs).obsm["X_umap"]
-        else:
-            sc.pp.neighbors(adata, use_rep=self.embedding_key)
-            adata.obsm[self.umap_key] = sc.tl.umap(adata, copy=True, **self.embedding_kwargs).obsm["X_umap"]
+                rsc.pp.neighbors(adata, use_rep=self.embedding_key)
+                adata.obsm[self.umap_key] = rsc.tl.umap(adata, copy=True, **self.embedding_kwargs).obsm["X_umap"]
+            else:
+                sc.pp.neighbors(adata, use_rep=self.embedding_key)
+                adata.obsm[self.umap_key] = sc.tl.umap(adata, copy=True, **self.embedding_kwargs).obsm["X_umap"]

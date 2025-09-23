@@ -171,7 +171,6 @@ class ONCLASS(BaseAlgorithm):
                 )
                 pred_label_str = [train_model.i2co[ind] for ind in onclass_pred[2]]
                 result_df.loc[names_x, self.result_key] = pred_label_str
-
                 onclass_seen = np.argmax(onclass_pred[0], axis=1)
                 pred_label_str = [train_model.i2co[ind] for ind in onclass_seen]
                 result_df.loc[names_x, self.seen_result_key] = pred_label_str
@@ -181,7 +180,6 @@ class ONCLASS(BaseAlgorithm):
                         onclass_pred[1], axis=1
                     ) / onclass_pred[1].sum(1)
                     result_df.loc[names_x, f"{self.seen_result_key}_probabilities"] = np.max(onclass_pred[0], axis=1)
-                    print(onclass_pred[0])
                     result_df_probabilities.loc[names_x, :] = onclass_pred[0]
         for col in required_columns.keys():
             if col not in adata.obs.columns:

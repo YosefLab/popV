@@ -136,7 +136,7 @@ class KNN_SCANORAMA(BaseAlgorithm):
             AnnData object. Results are stored in adata.obsm[self.umap_key].
         """
         if self.compute_umap_embedding:
-            logging.info(f'Saving UMAP of scanorama results to adata.obs["{self.embedding_key}"]')
+            logging.info(f'Saving UMAP of Scanorama results to adata.obsm["{self.embedding_key}"]')
             if settings.cuml:
                 import rapids_singlecell as rsc
 

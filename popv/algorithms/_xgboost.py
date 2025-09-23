@@ -75,7 +75,7 @@ class XGboost(BaseAlgorithm):
             train_x = adata[train_idx].layers[self.layer_key] if self.layer_key else adata[train_idx].X
             train_y = adata.obs.loc[train_idx, self.labels_key].cat.codes.to_numpy()
             dtrain = xgb.DMatrix(train_x, train_y)
-            self.classifier_dict["num_class"] = len(adata.uns["label_categories"])
+            self.classifier_dict["num_class"] = len(adata.uns["label_categories"]) - 1
 
             bst = xgb.train(self.classifier_dict, dtrain, num_boost_round=300)
             bst.save_model(os.path.join(adata.uns["_save_path_trained_models"], "xgboost_classifier.model"))
@@ -101,7 +101,6 @@ class XGboost(BaseAlgorithm):
                 adata.obs["_predict_cells"] == "relabel",
                 f"{self.result_key}_probabilities",
             ] = np.max(output_probabilities, axis=1).astype(float)
-            print("SSS", output_probabilities.shape, adata.obsm[f"{self.result_key}_probabilities"].shape)
             adata.obsm[f"{self.result_key}_probabilities"].loc[adata.obs["_predict_cells"] == "relabel", :] = (
-                output_probabilities[:, :-1].astype(float)
+                output_probabilities.astype(float)
             )

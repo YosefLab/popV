@@ -122,9 +122,8 @@ class KNN_HARMONY(BaseAlgorithm):
             Anndata object. Results are stored in adata.obs[self.result_key].
         """
         logging.info(f'Saving knn on harmony results to adata.obs["{self.result_key}"]')
-
+        knn = FAISSKNNProba(n_neighbors=self.classifier_dict["n_neighbors"])
         if self.recompute_classifier:
-            knn = FAISSKNNProba(n_neighbors=self.classifier_dict["n_neighbors"])
             ref_idx = adata.obs["_labelled_train_indices"]
             train_X = adata[ref_idx].obsm[self.embedding_key].copy()
             train_Y = adata.obs.loc[ref_idx, self.labels_key].cat.codes.to_numpy()

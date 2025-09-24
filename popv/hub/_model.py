@@ -131,6 +131,8 @@ class HubModel:
             The prediction mode to use. Either "fast" or "inference".
             "fast" will only predict on the query data,
             while "inference" will integrate query and reference data.
+        methods
+            List of methods to use for annotation. If None, all methods in the model will be used.
         gene_symbols
             Gene symbols given as query_adata.var_names.
 

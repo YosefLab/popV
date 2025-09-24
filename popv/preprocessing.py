@@ -314,7 +314,11 @@ class Process_Query:
         if self.prediction_mode == "fast":
             self.adata = self.query_adata
         else:
-            obsm_dtype = {key: value.dtype for key, value in self.ref_adata.obsm.items()}
+            obsm_dtype = {
+                key: value.dtype if isinstance(value, np.ndarray) else value.values.dtype
+                for key, value in self.ref_adata.obsm.items()
+            }
+
             self.adata = anndata.concat(
                 (self.ref_adata, self.query_adata),
                 axis=0,
@@ -325,11 +329,19 @@ class Process_Query:
                 merge="first",
                 uns_merge="first",
             )
-            self.adata.obsm = {
-                key: pd.DataFrame(value).apply(pd.to_numeric, errors="coerce").astype(obsm_dtype[key]).to_numpy()
-                for key, value in self.adata.obsm.items()
-                if key in obsm_dtype
-            }
+
+            # Ensure obsm entries are numeric and cast to original dtype
+            new_obsm = {}
+            for key, value in self.adata.obsm.items():
+                if key not in obsm_dtype:
+                    continue
+                if isinstance(value, pd.DataFrame):
+                    arr = value.apply(pd.to_numeric, errors="coerce").astype(obsm_dtype[key])
+                elif isinstance(value, np.ndarray):
+                    arr = pd.to_numeric(value.flatten(), errors="coerce").reshape(value.shape).astype(obsm_dtype[key])
+                new_obsm[key] = arr
+
+        self.adata.obsm = new_obsm
         del self.query_adata, self.ref_adata
         self.adata.obs["_labels_annotation"] = self.adata.obs["_labels_annotation"].fillna(self.unknown_celltype_label)
         self.adata.obs["_labelled_train_indices"] = np.logical_and(

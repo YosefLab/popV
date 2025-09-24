@@ -91,6 +91,5 @@ class FAISSKNNProba:
         obj = cls(n_neighbors=n_neighbors)
         obj.index = faiss.read_index(os.path.join(path_prefix, f"{index}.index"))
         labels = pd.read_csv(os.path.join(path_prefix, "ref_labels.csv"), index_col=0)
-        print(labels)
         obj.labels = labels.iloc[:, 0].to_numpy()
         return obj

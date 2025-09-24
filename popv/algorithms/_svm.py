@@ -69,7 +69,8 @@ class Support_Vector(BaseAlgorithm):
             Anndata object. Results are stored in adata.obs[self.result_key].
         """
         logging.info(f'Computing support vector machine. Storing prediction in adata.obs["{self.result_key}"]')
-        test_x = adata.layers[self.layer_key] if self.layer_key else adata.X
+        subset = adata[adata.obs["_predict_cells"] == "relabel", :]
+        test_x = subset.layers[self.layer_key] if self.layer_key else subset.X
 
         if adata.uns["_prediction_mode"] == "retrain":
             train_idx = adata.obs["_ref_subsample"]
@@ -105,12 +106,12 @@ class Support_Vector(BaseAlgorithm):
         if self.return_probabilities:
             required_columns = [self.result_key, f"{self.result_key}_probabilities"]
             results_df_probabilities = pd.DataFrame(
-                index=adata.obs_names, columns=adata.uns["label_categories"][:-1], dtype=float
+                index=subset.obs_names, columns=adata.uns["label_categories"][:-1], dtype=float
             )
         else:
             required_columns = [self.result_key]
 
-        result_df = pd.DataFrame(index=adata.obs_names, columns=required_columns, dtype=float)
+        result_df = pd.DataFrame(index=subset.obs_names, columns=required_columns, dtype=float)
         result_df[self.result_key] = result_df[self.result_key].astype("object")
         clf = joblib.load(
             open(

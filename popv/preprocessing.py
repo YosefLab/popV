@@ -6,16 +6,15 @@ import os
 import warnings
 
 import anndata
-import joblib
 import numpy as np
 import pandas as pd
 import scanpy as sc
 import scipy.sparse as scp
 import torch
-from pynndescent import NNDescent
 from scanpy._utils import check_nonnegative_integers
 
 from popv import _utils
+from popv._faiss_knn_classifier import FAISSKNNProba
 
 
 class Process_Query:
@@ -300,9 +299,9 @@ class Process_Query:
             sc.pp.scale(adata, max_value=10, layer="scaled", zero_center=False)
             sc.pp.pca(adata, layer="scaled", zero_center=False)
             reference_features = adata.obsm["X_pca"]
-            index = NNDescent(reference_features, n_neighbors=30, metric="euclidean")
-            index_path = os.path.join(self.save_path_trained_models, "pynndescent_index.joblib")
-            joblib.dump(index, open(index_path, "wb"))
+            index = FAISSKNNProba(n_neighbors=30)
+            index.fit(reference_features.astype(np.float32), labels=self.label_categories)
+            index.save(os.path.join(self.save_path_trained_models, "faiss_index"))
         else:
             adata.obs["_labels_annotation"] = self.unknown_celltype_label
             adata.obs["_ref_subsample"] = False
@@ -315,7 +314,11 @@ class Process_Query:
         if self.prediction_mode == "fast":
             self.adata = self.query_adata
         else:
-            obsm_dtype = {key: value.dtype for key, value in self.ref_adata.obsm.items()}
+            obsm_dtype = {
+                key: value.dtype if isinstance(value, np.ndarray) else value.values.dtype
+                for key, value in self.ref_adata.obsm.items()
+            }
+
             self.adata = anndata.concat(
                 (self.ref_adata, self.query_adata),
                 axis=0,
@@ -326,11 +329,18 @@ class Process_Query:
                 merge="first",
                 uns_merge="first",
             )
-            self.adata.obsm = {
-                key: pd.DataFrame(value).apply(pd.to_numeric, errors="coerce").astype(obsm_dtype[key]).to_numpy()
-                for key, value in self.adata.obsm.items()
-                if key in obsm_dtype
-            }
+
+            # Ensure obsm entries are numeric and cast to original dtype
+            new_obsm = {}
+            for key, value in self.adata.obsm.items():
+                if key not in obsm_dtype:
+                    continue
+                if isinstance(value, pd.DataFrame):
+                    arr = value.apply(pd.to_numeric, errors="coerce").astype(obsm_dtype[key])
+                elif isinstance(value, np.ndarray):
+                    arr = pd.to_numeric(value.flatten(), errors="coerce").reshape(value.shape).astype(obsm_dtype[key])
+                new_obsm[key] = arr
+            self.adata.obsm = new_obsm
         del self.query_adata, self.ref_adata
         self.adata.obs["_labels_annotation"] = self.adata.obs["_labels_annotation"].fillna(self.unknown_celltype_label)
         self.adata.obs["_labelled_train_indices"] = np.logical_and(
@@ -352,6 +362,10 @@ class Process_Query:
             self.adata = self.adata[self.adata.obs["_batch_annotation"].isin(valid_batches)].copy()
 
         self.adata.obs["_labels_annotation"] = self.adata.obs["_labels_annotation"].astype("category")
+        new_order = [
+            c for c in self.adata.obs["_labels_annotation"].cat.categories.tolist() if c != self.unknown_celltype_label
+        ] + [self.unknown_celltype_label]
+        self.adata.obs["_labels_annotation"] = self.adata.obs["_labels_annotation"].cat.reorder_categories(new_order)
         # Store values as default for current popv in adata
         self.adata.uns["unknown_celltype_label"] = self.unknown_celltype_label
         if self.prediction_mode == "retrain":
@@ -379,3 +393,7 @@ class Process_Query:
 
             with open(os.path.join(self.save_path_trained_models, "preprocessing.json"), "w") as f:
                 json.dump(data, f, indent=4)
+            ref_idx = self.adata.obs["_labelled_train_indices"]
+            self.adata[ref_idx].obs["_labels_annotation"].cat.codes.to_csv(
+                os.path.join(self.save_path_trained_models, "ref_labels.csv")
+            )

@@ -3,19 +3,13 @@ from __future__ import annotations
 import logging
 import os
 
-import joblib
 import numpy as np
 import pandas as pd
 import scanpy as sc
-from pynndescent import PyNNDescentTransformer
 from scvi.model import SCVI
-from sklearn.neighbors import KNeighborsClassifier
-from sklearn.pipeline import make_pipeline
 
 from popv import settings
-
-if settings.cuml:
-    import rapids_singlecell as rsc
+from popv._faiss_knn_classifier import FAISSKNNProba
 from popv.algorithms._base_algorithm import BaseAlgorithm
 
 
@@ -146,11 +140,13 @@ class KNN_SCVI(BaseAlgorithm):
 
         if adata.uns["_prediction_mode"] == "fast":
             self.train_kwargs["max_epochs"] = 1
-            model.train(**self.train_kwargs)
+            model.train(**self.train_kwargs, devices=[settings.device] if settings.cuml else settings.n_jobs)
         else:
             if self.max_epochs is None:
                 self.max_epochs = min(round((20000 / adata.n_obs) * 200), 200)
-            model.train(**self.train_kwargs)
+            print(f"Retraining scvi for {self.max_epochs} epochs.")
+            self.train_kwargs["max_epochs"] = self.max_epochs
+            model.train(**self.train_kwargs, devices=[settings.device] if settings.cuml else settings.n_jobs)
 
             if adata.uns["_save_path_trained_models"] and adata.uns["_prediction_mode"] == "retrain":
                 save_path = os.path.join(adata.uns["_save_path_trained_models"], "scvi")
@@ -179,56 +175,44 @@ class KNN_SCVI(BaseAlgorithm):
             Anndata object. Results are stored in adata.obs[self.result_key].
         """
         logging.info(f'Saving knn on scvi results to adata.obs["{self.result_key}"]')
+        knn = FAISSKNNProba(n_neighbors=self.classifier_dict["n_neighbors"])
 
         if adata.uns["_prediction_mode"] == "retrain":
             ref_idx = adata.obs["_labelled_train_indices"]
 
             train_X = adata[ref_idx].obsm[self.embedding_key].copy()
             train_Y = adata.obs.loc[ref_idx, self.labels_key].cat.codes.to_numpy()
-            knn = make_pipeline(
-                PyNNDescentTransformer(
-                    n_neighbors=self.classifier_dict["n_neighbors"],
-                    n_jobs=settings.n_jobs,
-                ),
-                KNeighborsClassifier(metric="precomputed", weights=self.classifier_dict["weights"]),
-            )
+
             knn.fit(train_X, train_Y)
-            joblib.dump(
-                knn,
-                open(
-                    os.path.join(
-                        adata.uns["_save_path_trained_models"],
-                        "scvi_knn_classifier.joblib",
-                    ),
-                    "wb",
-                ),
+            knn.save(
+                os.path.join(adata.uns["_save_path_trained_models"], "scvi_knn_classifier"),
             )
         else:
-            knn = joblib.load(
-                open(
-                    os.path.join(
-                        adata.uns["_save_path_trained_models"],
-                        "scvi_knn_classifier.joblib",
-                    ),
-                    "rb",
-                )
-            )
+            knn = knn.load(adata.uns["_save_path_trained_models"], "scvi_knn_classifier")
 
         # save_results
         embedding = adata[adata.obs["_predict_cells"] == "relabel"].obsm[self.embedding_key]
-        knn_pred = knn.predict(embedding)
+        knn_pred = knn.predict(embedding, adata.uns["label_categories"][:-1])
         if self.result_key not in adata.obs.columns:
             adata.obs[self.result_key] = adata.uns["unknown_celltype_label"]
-        adata.obs.loc[adata.obs["_predict_cells"] == "relabel", self.result_key] = adata.uns["label_categories"][
-            knn_pred
-        ]
+        adata.obs.loc[adata.obs["_predict_cells"] == "relabel", self.result_key] = knn_pred
         if self.return_probabilities:
             if f"{self.result_key}_probabilities" not in adata.obs.columns:
                 adata.obs[f"{self.result_key}_probabilities"] = pd.Series(dtype="float64")
+            if f"{self.result_key}_probabilities" not in adata.obsm:
+                adata.obsm[f"{self.result_key}_probabilities"] = pd.DataFrame(
+                    np.nan,
+                    index=adata.obs_names,
+                    columns=adata.uns["label_categories"][:-1],
+                )
+            probabilities = knn.predict_proba(embedding, adata.uns["label_categories"][:-1])
             adata.obs.loc[
                 adata.obs["_predict_cells"] == "relabel",
                 f"{self.result_key}_probabilities",
-            ] = np.max(knn.predict_proba(embedding), axis=1)
+            ] = np.max(probabilities, axis=1)
+            adata.obsm[f"{self.result_key}_probabilities"].loc[adata.obs["_predict_cells"] == "relabel", :] = (
+                probabilities
+            )
 
     def compute_umap(self, adata):
         """
@@ -240,8 +224,10 @@ class KNN_SCVI(BaseAlgorithm):
             Anndata object. Results are stored in adata.obsm[self.umap_key].
         """
         if self.compute_umap_embedding:
-            logging.info(f'Saving UMAP of scvi results to adata.obs["{self.umap_key}"]')
+            logging.info(f'Saving UMAP of scVI results to adata.obsm["{self.umap_key}"]')
             if settings.cuml:
+                import rapids_singlecell as rsc
+
                 rsc.pp.neighbors(adata, use_rep=self.embedding_key)
                 adata.obsm[self.umap_key] = rsc.tl.umap(adata, copy=True, **self.embedding_kwargs).obsm["X_umap"]
             else:

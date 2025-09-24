@@ -14,7 +14,6 @@ import scanpy as sc
 from huggingface_hub import ModelCard, snapshot_download
 from rich.markdown import Markdown
 from scvi import settings
-from scvi.utils import dependencies
 
 from popv.annotation import AlgorithmsNT, annotate_data
 from popv.hub._metadata import HubMetadata, HubModelCardHelper
@@ -131,6 +130,8 @@ class HubModel:
             The prediction mode to use. Either "fast" or "inference".
             "fast" will only predict on the query data,
             while "inference" will integrate query and reference data.
+        methods
+            List of methods to use for annotation. If None, all methods in the model will be used.
         gene_symbols
             Gene symbols given as query_adata.var_names.
 
@@ -142,9 +143,7 @@ class HubModel:
         ref_adata = self.adata if prediction_mode == "retrain" else self.minified_adata
         setup_dict = self.metadata.setup_dict
         if gene_symbols is not None:
-            print("SSSSSS")
-            query_adata = self.map_genes(adata=query_adata, gene_symbols=gene_symbols)
-        print("LLLLLL", self.local_dir, os.listdir(self.local_dir))
+            query_adata = self.map_genes(adata=query_adata, gene_symbols=gene_symbols, organism=self.metadata.organism)
 
         concatenate_adata = Process_Query(
             query_adata,
@@ -176,7 +175,6 @@ class HubModel:
 
         return concatenate_adata
 
-    @dependencies("huggingface_hub")
     def push_to_huggingface_hub(
         self,
         repo_name: str,
@@ -184,6 +182,7 @@ class HubModel:
         repo_create: bool = False,
         repo_create_kwargs: dict | None = None,
         collection_slug: str | None = None,
+        delete_existing_files: bool = False,
         **kwargs,
     ):
         """Push this model to HuggingFace.
@@ -205,6 +204,8 @@ class HubModel:
             ``repo_create=True``.
         collection_slug
             The internal name in HuggingFace for a dataset collection.
+        delete_existing_files
+            Whether to delete existing files in the repo before uploading new ones.
         **kwargs
             Additional keyword arguments passed into :meth:`huggingface_hub.HfApi.upload_file`.
         """
@@ -220,16 +221,17 @@ class HubModel:
             repo_create_kwargs = repo_create_kwargs or {}
             create_repo(repo_name, token=repo_token, **repo_create_kwargs)
         api = HfApi()
-        # upload the model card
-        self.model_card.push_to_hub(repo_name, token=repo_token)
         # upload the model
         api.upload_folder(
             folder_path=self._local_dir,
             repo_id=repo_name,
             token=repo_token,
             ignore_patterns="*h5ad",  # Ignore all h5ad files.
+            delete_patterns="*" if delete_existing_files else None,
             **kwargs,
         )
+        # upload the model card
+        self.model_card.push_to_hub(repo_name, token=repo_token)
         # upload the metadata
         api.upload_file(
             path_or_fileobj=json.dumps(asdict(self.metadata), indent=4).encode(),
@@ -375,12 +377,12 @@ class HubModel:
             self._minfied_adata = sc.read_h5ad(self._minified_adata_path)
         return self._minfied_adata
 
-    def map_genes(self, adata, gene_symbols) -> AnnData | None:
+    def map_genes(self, adata, gene_symbols, organism) -> AnnData | None:
         """Map genes to CELLxGENE census gene IDs."""
         with cellxgene_census.open_soma() as census:
             var_df = cellxgene_census.get_var(
                 census,
-                organism="homo_sapiens",
+                organism=organism,
             )
             feature_dict = dict(zip(var_df[gene_symbols], var_df["feature_id"], strict=True))
         adata.var["old_index"] = adata.var_names

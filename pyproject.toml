@@ -10,7 +10,7 @@ exclude = ["resources/*", "tests/*", "dataset/*"]
 
 [project]
 name = "popV"
-version = "0.5.3"
+version = "0.6.0"
 description = "Consensus prediction of cell type labels with popV"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -41,6 +41,7 @@ dependencies = [
     "anndata",
     "bbknn",
     "celltypist",
+    "harmonypy",
     "huggingface-hub",
     "onclass",
     "scanorama",
@@ -48,9 +49,9 @@ dependencies = [
     "scikit-misc",
     "scvi-tools",
     "tensorflow",
-    "harmony-pytorch",
     "huggingface",
     "xgboost",
+    "faiss-cpu",
     "leidenalg",
     "cellxgene_census",
 ]

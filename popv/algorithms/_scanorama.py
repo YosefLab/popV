@@ -4,14 +4,9 @@ import logging
 
 import numpy as np
 import scanpy as sc
-from pynndescent import PyNNDescentTransformer
-from sklearn.neighbors import KNeighborsClassifier
-from sklearn.pipeline import make_pipeline
 
 from popv import settings
-
-if settings.cuml:
-    import rapids_singlecell as rsc
+from popv._faiss_knn_classifier import FAISSKNNProba
 from popv.algorithms._base_algorithm import BaseAlgorithm
 
 
@@ -76,9 +71,9 @@ class KNN_SCANORAMA(BaseAlgorithm):
         if method_kwargs is not None:
             self.method_kwargs.update(method_kwargs)
 
-        self.classifier_kwargs = {"weights": "uniform", "n_neighbors": 15}
+        self.classifier_dict = {"weights": "uniform", "n_neighbors": 15}
         if classifier_kwargs is not None:
-            self.classifier_kwargs.update(classifier_kwargs)
+            self.classifier_dict.update(classifier_kwargs)
 
         self.embedding_kwargs = {
             "min_dist": 0.1,
@@ -118,22 +113,19 @@ class KNN_SCANORAMA(BaseAlgorithm):
         ref_idx = adata.obs["_labelled_train_indices"]
         train_X = adata[ref_idx].obsm[self.embedding_key]
         train_Y = adata.obs.loc[ref_idx, self.labels_key].cat.codes.to_numpy()
+        test_X = adata.obsm[self.embedding_key]
 
-        knn = make_pipeline(
-            PyNNDescentTransformer(n_neighbors=self.classifier_kwargs["n_neighbors"], n_jobs=settings.n_jobs),
-            KNeighborsClassifier(metric="precomputed", weights=self.classifier_kwargs["weights"]),
-        )
-
+        knn = FAISSKNNProba(n_neighbors=self.classifier_dict["n_neighbors"])
         knn.fit(train_X, train_Y)
-        knn_pred = knn.predict(adata.obsm[self.embedding_key])
+        knn_pred = knn.predict(test_X, adata.uns["label_categories"][:-1])
 
         # save_results
-        adata.obs[self.result_key] = adata.uns["label_categories"][knn_pred]
+        adata.obs[self.result_key] = knn_pred
 
         if self.return_probabilities:
-            adata.obs[f"{self.result_key}_probabilities"] = np.max(
-                knn.predict_proba(adata.obsm[self.embedding_key]), axis=1
-            )
+            probabilities = knn.predict_proba(test_X, adata.uns["label_categories"][:-1])
+            adata.obs[f"{self.result_key}_probabilities"] = np.max(probabilities, axis=1)
+            adata.obsm[f"{self.result_key}_probabilities"] = probabilities
 
     def compute_umap(self, adata):
         """
@@ -145,8 +137,10 @@ class KNN_SCANORAMA(BaseAlgorithm):
             AnnData object. Results are stored in adata.obsm[self.umap_key].
         """
         if self.compute_umap_embedding:
-            logging.info(f'Saving UMAP of scanorama results to adata.obs["{self.embedding_key}"]')
+            logging.info(f'Saving UMAP of Scanorama results to adata.obsm["{self.embedding_key}"]')
             if settings.cuml:
+                import rapids_singlecell as rsc
+
                 rsc.pp.neighbors(adata, use_rep=self.embedding_key)
                 adata.obsm[self.umap_key] = rsc.tl.umap(adata, copy=True, **self.embedding_kwargs).obsm["X_umap"]
             else:

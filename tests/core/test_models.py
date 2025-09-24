@@ -7,6 +7,7 @@ import numpy as np
 import popv
 import pytest
 import scanpy as sc
+import sklearn
 from popv.preprocessing import Process_Query
 from popv.reproducibility import _accuracy
 
@@ -89,6 +90,8 @@ def test_annotation_hub(private: bool):
         "description": "Tabula Sapiens is a benchmark, first-draft human cell atlas of over 1.1M cells from 28 organs of 24 normal human subjects. This work is the product of the Tabula Sapiens Consortium. Taking the organs from the same individual controls for genetic background, age, environment, and epigenetic effects, and allows detailed analysis and comparison of cell types that are shared between tissues.",
         "tissues": ["test"],
         "cellxgene_url": "test",
+        "scikit_learn_version": sklearn.__version__,
+        "organism": "Homo sapiens",
         "references": "Tabula Sapiens reveals transcription factor expression, senescence effects, and sex-specific features in cell types from 28 human organs and tissues, The Tabula Sapiens Consortium; bioRxiv, doi: https://doi.org/10.1101/2024.12.03.626516",
         "license_info": "cc-by-4.0",
     }
@@ -97,6 +100,8 @@ def test_annotation_hub(private: bool):
         adata,
         popv_version=popv.__version__,
         anndata_version=anndata.__version__,
+        scikit_learn_version=sklearn.__version__,
+        organism="Homo sapiens",
         cellxgene_url=model_json["cellxgene_url"],
     )
     hmo = popv.hub.HubModel(output_folder, model_card=hmch, metadata=hm)
@@ -106,6 +111,7 @@ def test_annotation_hub(private: bool):
             repo_token=None,
             repo_create=True,
             repo_create_kwargs={"exist_ok": True},
+            delete_existing_files=True,
         )
     hmo = popv.hub.HubModel.pull_from_huggingface_hub(
         "popV/test", cache_dir="tests/tmp_testing/popv_test_results_hub_pulled/"

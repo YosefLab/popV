@@ -68,6 +68,7 @@ class Config:
         recompute_embeddings: bool = False,
         return_probabilities: bool = True,
         compute_umap_embedding: bool = True,
+        device: int | None = 0,
     ):
         """Set up Config manager for PopV."""
         self.seed = seed
@@ -80,6 +81,7 @@ class Config:
         self.recompute_embeddings = recompute_embeddings
         self.return_probabilities = return_probabilities
         self.compute_umap_embedding = compute_umap_embedding
+        self.device = device
 
     @property
     def logging_dir(self) -> Path:
@@ -197,6 +199,15 @@ class Config:
     @return_probabilities.setter
     def return_probabilities(self, return_probabilities: bool):
         self._return_probabilities = return_probabilities
+
+    @property
+    def device(self) -> int | None:
+        """GPU device to use for acceleration."""
+        return self._device
+
+    @device.setter
+    def device(self, device: int | None):
+        self._device = device
 
 
 settings = Config()

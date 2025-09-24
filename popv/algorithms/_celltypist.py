@@ -4,16 +4,13 @@ import logging
 import os
 
 import celltypist
-import joblib
 import numpy as np
 import pandas as pd
 import scanpy as sc
 from scipy.stats import mode
 
 from popv import settings
-
-if settings.cuml:
-    import rapids_singlecell as rsc
+from popv._faiss_knn_classifier import FAISSKNNProba
 from popv.algorithms._base_algorithm import BaseAlgorithm
 
 
@@ -86,9 +83,11 @@ class CELLTYPIST(BaseAlgorithm):
             and "over_clustering" in adata.obs
             and not settings.recompute_embeddings
         ):
-            index = joblib.load(os.path.join(adata.uns["_save_path_trained_models"], "pynndescent_index.joblib"))
+            knn = FAISSKNNProba(n_neighbors=5)
+            knn = knn.load(adata.uns["_save_path_trained_models"], "faiss_index")
+
             query_features = adata.obsm["X_pca"][adata.obs["_dataset"] == "query", :]
-            indices, _ = index.query(query_features.astype(np.float32), k=5)
+            indices = knn.query(query_features.astype(np.float32), n_neighbors=5)
             neighbor_values = adata.obs.loc[adata.obs["_dataset"] == "ref", "over_clustering"].cat.codes.values[indices]
             adata.obs.loc[adata.obs["_dataset"] == "query", "over_clustering"] = adata.obs[
                 "over_clustering"
@@ -96,6 +95,8 @@ class CELLTYPIST(BaseAlgorithm):
             over_clustering = adata.obs.loc[adata.obs["_predict_cells"] == "relabel", "over_clustering"]
         else:
             if settings.cuml:
+                import rapids_singlecell as rsc
+
                 rsc.pp.neighbors(adata, n_neighbors=15, use_rep="X_pca")
                 rsc.tl.leiden(adata, resolution=25.0, key_added="over_clustering")
             else:
@@ -136,7 +137,16 @@ class CELLTYPIST(BaseAlgorithm):
         if self.return_probabilities:
             if f"{self.result_key}_probabilities" not in adata.obs.columns:
                 adata.obs[f"{self.result_key}_probabilities"] = pd.Series(dtype="float64")
+            if f"{self.result_key}_probabilities" not in adata.obsm:
+                adata.obsm[f"{self.result_key}_probabilities"] = pd.DataFrame(
+                    np.nan,
+                    index=adata.obs_names,
+                    columns=adata.uns["label_categories"],
+                )
             adata.obs.loc[
                 adata.obs["_predict_cells"] == "relabel",
                 f"{self.result_key}_probabilities",
             ] = predictions.probability_matrix.max(axis=1).values
+            adata.obsm[f"{self.result_key}_probabilities"].loc[adata.obs["_predict_cells"] == "relabel", :] = (
+                predictions.probability_matrix
+            )

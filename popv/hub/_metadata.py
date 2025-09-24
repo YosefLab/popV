@@ -57,6 +57,7 @@ class HubMetadata:
         anndata_version: str,
         scikit_learn_version: str,
         popv_version: str,
+        organism: str,
         **kwargs,
     ):
         """Create a `HubMetadata` object from an AnnData file.
@@ -71,6 +72,8 @@ class HubMetadata:
             The version of scikit-learn used during model training.
         popv_version
             The version of `popV` that the model was trained with.
+        organism
+            The organism of the data.
         kwargs
             Additional keyword arguments to pass to the HubMetadata initializer.
         """
@@ -83,6 +86,7 @@ class HubMetadata:
             popv_version=popv_version,
             anndata_version=anndata_version,
             scikit_learn_version=scikit_learn_version,
+            organism=organism,
             setup_dict=setup_dict,
             prediction_keys=prediction_keys,
             methods=methods,
@@ -120,6 +124,8 @@ class HubModelCardHelper:
         The version of anndata used during model training.
     scikit_learn_version
         The version of scikit-learn used during model training.
+    organism
+        The organism of the data.
     tissues
         The tissues of the training data.
     cellxgene_url

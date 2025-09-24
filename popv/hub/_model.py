@@ -14,7 +14,6 @@ import scanpy as sc
 from huggingface_hub import ModelCard, snapshot_download
 from rich.markdown import Markdown
 from scvi import settings
-from scvi.utils import dependencies
 
 from popv.annotation import AlgorithmsNT, annotate_data
 from popv.hub._metadata import HubMetadata, HubModelCardHelper
@@ -144,9 +143,7 @@ class HubModel:
         ref_adata = self.adata if prediction_mode == "retrain" else self.minified_adata
         setup_dict = self.metadata.setup_dict
         if gene_symbols is not None:
-            print("SSSSSS")
-            query_adata = self.map_genes(adata=query_adata, gene_symbols=gene_symbols)
-        print("LLLLLL", self.local_dir, os.listdir(self.local_dir))
+            query_adata = self.map_genes(adata=query_adata, gene_symbols=gene_symbols, organism=self.metadata.organism)
 
         concatenate_adata = Process_Query(
             query_adata,
@@ -178,7 +175,6 @@ class HubModel:
 
         return concatenate_adata
 
-    @dependencies("huggingface_hub")
     def push_to_huggingface_hub(
         self,
         repo_name: str,
@@ -381,12 +377,12 @@ class HubModel:
             self._minfied_adata = sc.read_h5ad(self._minified_adata_path)
         return self._minfied_adata
 
-    def map_genes(self, adata, gene_symbols) -> AnnData | None:
+    def map_genes(self, adata, gene_symbols, organism) -> AnnData | None:
         """Map genes to CELLxGENE census gene IDs."""
         with cellxgene_census.open_soma() as census:
             var_df = cellxgene_census.get_var(
                 census,
-                organism="homo_sapiens",
+                organism=organism,
             )
             feature_dict = dict(zip(var_df[gene_symbols], var_df["feature_id"], strict=True))
         adata.var["old_index"] = adata.var_names

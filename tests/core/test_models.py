@@ -101,6 +101,7 @@ def test_annotation_hub(private: bool):
         popv_version=popv.__version__,
         anndata_version=anndata.__version__,
         scikit_learn_version=sklearn.__version__,
+        organism="Homo sapiens",
         cellxgene_url=model_json["cellxgene_url"],
     )
     hmo = popv.hub.HubModel(output_folder, model_card=hmch, metadata=hm)

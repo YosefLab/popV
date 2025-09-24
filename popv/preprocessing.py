@@ -340,8 +340,7 @@ class Process_Query:
                 elif isinstance(value, np.ndarray):
                     arr = pd.to_numeric(value.flatten(), errors="coerce").reshape(value.shape).astype(obsm_dtype[key])
                 new_obsm[key] = arr
-
-        self.adata.obsm = new_obsm
+            self.adata.obsm = new_obsm
         del self.query_adata, self.ref_adata
         self.adata.obs["_labels_annotation"] = self.adata.obs["_labels_annotation"].fillna(self.unknown_celltype_label)
         self.adata.obs["_labelled_train_indices"] = np.logical_and(

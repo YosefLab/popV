@@ -13,7 +13,13 @@ to several million cells on workstations with 128 GB of RAM
 and enable more GPU-accelerated
 functions.
 
+## Version 0.6
+
+### 0.6.0
+
 ## Version 0.5
+
+### 0.5.3
 
 ### 0.5.2
 

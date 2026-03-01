@@ -208,7 +208,7 @@ class SCANVI_POPV(BaseAlgorithm):
             Anndata object. Results are stored in adata.obsm[self.umap_key].
         """
         if self.compute_umap_embedding:
-            logging.info(f'Saving UMAP of BBKNN results to adata.obsm["{self.umap_key}"]')
+            logging.info(f'Saving UMAP of scANVI results to adata.obsm["{self.umap_key}"]')
             if settings.cuml:
                 import rapids_singlecell as rsc
 

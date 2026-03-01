@@ -103,9 +103,7 @@ class KNN_BBKNN(BaseAlgorithm):
 
             self.method_kwargs.pop("approx", None)  # approx not supported in rsc
             self.method_kwargs.pop("use_annoy", None)  # use_annoy not supported in rsc
-            rsc.pp.bbknn(
-                adata, batch_key=self.batch_key, use_rep="X_pca", algorithm="ivfflat", **self.method_kwargs
-            )
+            rsc.pp.bbknn(adata, batch_key=self.batch_key, use_rep="X_pca", algorithm="ivfflat", **self.method_kwargs)
         else:
             sc.external.pp.bbknn(adata, batch_key=self.batch_key, use_rep="X_pca", **self.method_kwargs)
 

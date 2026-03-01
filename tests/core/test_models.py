@@ -95,7 +95,9 @@ def test_annotation_hub(private: bool):
         "references": "Tabula Sapiens reveals transcription factor expression, senescence effects, and sex-specific features in cell types from 28 human organs and tissues, The Tabula Sapiens Consortium; bioRxiv, doi: https://doi.org/10.1101/2024.12.03.626516",
         "license_info": "cc-by-4.0",
     }
-    hmch = popv.hub.HubModelCardHelper.from_dir(output_folder, anndata_version=anndata.__version__, popv_version=popv.__version__, **model_json)
+    hmch = popv.hub.HubModelCardHelper.from_dir(
+        output_folder, anndata_version=anndata.__version__, popv_version=popv.__version__, **model_json
+    )
     hm = popv.hub.HubMetadata.from_anndata(
         adata,
         popv_version=popv.__version__,

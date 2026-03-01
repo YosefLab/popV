@@ -78,8 +78,8 @@ class HubMetadata:
             Additional keyword arguments to pass to the HubMetadata initializer.
         """
         setup_dict = adata.uns["_setup_dict"]
-        prediction_keys = adata.uns["prediction_keys"]
-        methods = adata.uns["methods"]
+        prediction_keys = list(adata.uns["prediction_keys"])
+        methods = list(adata.uns["methods"])
         method_kwargs = adata.uns["method_kwargs"]
 
         return cls(
@@ -122,6 +122,8 @@ class HubModelCardHelper:
         The version of `scvi-tools` that the model was trained with.
     anndata_version
         The version of anndata used during model training.
+    popv_version
+        The version of popV that the model was trained with.
     scikit_learn_version
         The version of scikit-learn used during model training.
     organism
@@ -153,6 +155,7 @@ class HubModelCardHelper:
 
     license_info: str
     anndata_version: str
+    popv_version: str
     scikit_learn_version: str
     organism: str
     tissues: list[str] = field(default_factory=list)
@@ -172,6 +175,7 @@ class HubModelCardHelper:
         license_info: str,
         anndata_version: str,
         scikit_learn_version: str,
+        popv_version: str,
         organism: str,
         metrics_report: str | None = None,
         **kwargs,
@@ -210,6 +214,7 @@ class HubModelCardHelper:
         return cls(
             license_info,
             anndata_version,
+            popv_version,
             scikit_learn_version,
             organism,
             metrics_report=metrics_report,
@@ -222,11 +227,11 @@ class HubModelCardHelper:
             "biology",
             "genomics",
             "single-cell",
-            f"anndata_version:{self.anndata_version}",
-            f"scikit_learn_version:{self.scikit_learn_version}",
+            f"AnnData:{self.anndata_version}",
+            f"scikit_learn:{self.scikit_learn_version}",
             f"organism:{self.organism}",
-            f"python_version:{'.'.join([str(i) for i in sys.version_info[:3]])}",
-            "popV",
+            f"Python:{'.'.join([str(i) for i in sys.version_info[:3]])}",
+            f"popV:{self.popv_version}",
         ]
         for t in self.tissues:
             tags.append(f"tissue: {t}")

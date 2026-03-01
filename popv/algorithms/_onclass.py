@@ -188,6 +188,8 @@ class ONCLASS(BaseAlgorithm):
                 else:
                     adata.obs[col] = adata.uns["unknown_celltype_label"]
                     adata.obs[col] = adata.obs[col].astype(str)  # Set dtype to string
+        adata.obs[self.result_key] = adata.obs[self.result_key].astype(str)
+        adata.obs[self.seen_result_key] = adata.obs[self.seen_result_key].astype(str)
         adata.obs.loc[adata.obs["_predict_cells"] == "relabel", result_df.columns] = result_df
         if self.return_probabilities:
             if f"{self.result_key}_probabilities" not in adata.obsm:

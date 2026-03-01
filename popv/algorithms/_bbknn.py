@@ -91,13 +91,20 @@ class KNN_BBKNN(BaseAlgorithm):
         logging.info("Integrating data with bbknn")
         if len(adata.obs[self.batch_key].unique()) > 100:
             self.method_kwargs["neighbors_within_batch"] = 1
-        if settings.cuml:
+        if len(adata.obs[self.batch_key].unique()) > 200 and settings.cuml:
+            logging.warning(
+                f"Number of batches is {len(adata.obs[self.batch_key].unique())}, skipping RAPIDS BBKNN and running on CPU."
+            )
+            cuml = False
+        else:
+            cuml = settings.cuml
+        if cuml:
             import rapids_singlecell as rsc
 
             self.method_kwargs.pop("approx", None)  # approx not supported in rsc
             self.method_kwargs.pop("use_annoy", None)  # use_annoy not supported in rsc
             rsc.pp.bbknn(
-                adata, batch_key=self.batch_key, use_rep="X_pca", algorithm="ivfflat", **self.method_kwargs, trim=0
+                adata, batch_key=self.batch_key, use_rep="X_pca", algorithm="ivfflat", **self.method_kwargs
             )
         else:
             sc.external.pp.bbknn(adata, batch_key=self.batch_key, use_rep="X_pca", **self.method_kwargs)

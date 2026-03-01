@@ -181,6 +181,7 @@ class ONCLASS(BaseAlgorithm):
                     ) / onclass_pred[1].sum(1)
                     result_df.loc[names_x, f"{self.seen_result_key}_probabilities"] = np.max(onclass_pred[0], axis=1)
                     result_df_probabilities.loc[names_x, :] = onclass_pred[0]
+
         for col in required_columns.keys():
             if col not in adata.obs.columns:
                 if "probabilities" in col:
@@ -188,6 +189,10 @@ class ONCLASS(BaseAlgorithm):
                 else:
                     adata.obs[col] = adata.uns["unknown_celltype_label"]
                     adata.obs[col] = adata.obs[col].astype(str)  # Set dtype to string
+            else:
+                if isinstance(adata.obs[col].dtype, pd.CategoricalDtype):
+                    adata.obs[col] = adata.obs[col].astype(object)
+
         adata.obs.loc[adata.obs["_predict_cells"] == "relabel", result_df.columns] = result_df
         if self.return_probabilities:
             if f"{self.result_key}_probabilities" not in adata.obsm:

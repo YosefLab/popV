@@ -28,8 +28,6 @@ jobs:
             python: "3.11"
           - os: ubuntu-latest
             python: "3.12"
-          - os: ubuntu-latest
-            python: "3.13"
 
     name: ${{ matrix.os }} Python ${{ matrix.python }}
 
